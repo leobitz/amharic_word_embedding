@@ -1,31 +1,32 @@
 import numpy as np
-from util import *
-import os
-import h5py
 
-
-class DataGen2:
-
-    def __init__(self, charset_file, batch_size, seuqnce_length):
-        self.charset_file = charset_file
-        self.char2int = {}
-        self.int2char = {}
-        self.char2tup = {}
-        self.tup2char = {}
-        self.batch_size = batch_size
-        self.seuqnce_length = seuqnce_length
-        self.n_consonants = 0
-        self.n_vowels = 0
-        self.output_size = 0
-        self.load_charset()
-
+class DataGen:
+    
+    def __init__(self, percent=100):
+        self.n_consonant = 0
+        self.n_vowel = 10
+        self.corpus = open('data/news.txt', encoding='utf8').read()
+        self.words = self.corpus.split(' ')
+        width = int(len(self.words) * percent/100)
+        self.words = self.words[:width]
+        self.char2int, self.int2char, self.char2tup, self.tup2char = self.load_charset()
+        self.vocab, self.word2int, self.int2word = self.get_vocab(self.words)
+        self.max_word_len = 11
+        del self.corpus
+    
+    def get_vocab(self, words):
+        word2int = {}
+        int2word = {}
+        vocab = list(sorted(set(words)))
+        for word in vocab:
+            int2word[len(word2int)] = word
+            word2int[word] = len(word2int)
+        return vocab, word2int, int2word
+    
     def load_charset(self):
-        charset = open(self.charset_file, encoding='utf-8').readlines()
-        char2int = {}
-        int2char = {}
-        char2tup = {}
-        tup2char = {}
-        charset[-2] = charset[-2] + '\n'
+        charset = open('data/charset.txt', encoding='utf-8').readlines()
+        self.n_consonant = len(charset)
+        char2int, int2char, char2tup, tup2char = {}, {}, {}, {}
         j = 0
         for k in range(len(charset)):
             row = charset[k][:-1].split(',')
@@ -36,187 +37,84 @@ class DataGen2:
                 tup = "{0}-{1}".format(k, i)
                 tup2char[tup] = row[i]
                 j += 1
-
-        self.int2char = int2char
-        self.tup2char = tup2char
-        self.char2int = char2int
-        self.char2tup = char2tup
-        self.n_consonants = len(charset)
-        self.n_vowels = 10
-
-    def encode_text_to_num(self, text):
-        encoded = [self.char2int[c] for c in text]
-        encoded = np.array(encoded).reshape((len(encoded), 1))
-        return encoded
-
-    def get_consonants(self, char):
-        class_code, vowel_code = self.char2tup[char]
-        class_hot = one_hot_encode(class_code, self.n_consonants)
-        return class_hot
-
-    def get_vowels(self, char):
-        class_code, vowel_code = self.char2tup[char]
-        vowel_hot = one_hot_encode(vowel_code, self.n_vowels)
-        return vowel_hot
-
-    def text_vec(self, text, target):
-        output_size = len(self.char2int)
-        num_encoded = self.encode_text_to_num2(text)
-        hots = []
-        for num in num_encoded:
-            hots.append(one_hot_encode(num, output_size))
-        hots = np.stack(hots)
-        output = one_hot_encode(self.char2int[target], output_size)
-
-        return hots, output
-
-    def nums_to_chars(self, nums):
-        return [self.int2char[i] for i in nums]
-
-    def encode_text(self, text):
-        x = np.zeros((len(text), (self.n_consonants + self.n_vowels)))
-        for t in range(len(text)):
-            class_code, vowel_code = self.char2tup[text[t]]
-            x[t][:self.n_consonants] = one_hot_encode(
-                class_code, self.n_consonants)
-            x[t][self.n_consonants:] = one_hot_encode(
-                vowel_code, self.n_vowels)
-        return x
-
-    def encode_char(self, char):
-        class_code, vowel_code = self.char2tup[char]
-        class_hot = one_hot_encode(class_code, self.n_consonants)
-        vowel_hot = one_hot_encode(vowel_code, self.n_vowels)
-        return class_hot, vowel_hot
+        return char2int, int2char, char2tup, tup2char
+        
     
-    def vec_to_char(self, vec):
-        ic = np.argmax(vec[:self.n_consonants])
-        iv = np.argmax(vec[self.n_consonants:])
-        key = "{0}-{1}".format(ic, iv)
-        c = self.tup2char[key]
-        return c
+    def word2vec(self, word):
+        cons = np.zeros((self.max_word_len, self.n_consonant), dtype=np.float32)
+        vowel = np.zeros((self.max_word_len, self.n_vowel), dtype=np.float32)
+        for i in range(len(word)):
+            char = word[i]
+            t = self.char2tup[char]
+            cons[i][t[0]] = 1
+            vowel[i][t[1]] = 1
+        con, vow = self.char2tup[' ']
+        cons[i+1:, con] = 1
+        vowel[i+1:, vow] = 1
+        vec = np.concatenate([cons, vowel], axis=1)
+        return vec
 
-    def generate_v1(self, corpus, batches=-1):
-        batch_size = self.batch_size
-        seq_length = self.seuqnce_length
-        to_read = batch_size + seq_length
-        tex_data_file = open(corpus, mode='r', encoding='utf-8')
-        prev_left = tex_data_file.read(seq_length)
-        input_size = len(self.char2int) + 1
-        batch = 0
-        while True:
-            new_batch = tex_data_file.read(batch_size)
-            if len(new_batch) < batch_size or batch == batches:
-                tex_data_file.seek(0, 0)
-                batch = 0
-                continue
-            seq = prev_left + new_batch
-            batch_x = np.empty((batch_size, seq_length, input_size))
-            batch_y = np.empty((batch_size, input_size))
-            for b in range(batch_size):
-                text = seq[b:seq_length + b]
-                taregt = seq[seq_length + b]
-                num_encoded = self.encode_text_to_num(text)
-                hots = []
-                for num in num_encoded:
-                    hots.append(one_hot_encode(num, input_size))
-                hots = np.stack(hots)
-                batch_x[b] = hots
-                output = one_hot_encode(self.char2int[taregt], input_size)
-                batch_y[b] = output
-            prev_left = seq[batch_size:seq_length + batch_size]
-            batch += 1
-            yield batch_x, batch_y
+    def word2vec2(self, word):
+        max_n_char = len(self.char2int)
+        vec = np.zeros((self.max_word_len, max_n_char), dtype=np.float32)
+        for i in range(len(word)):
+            char = word[i]
+            t = self.char2int[char]
+            vec[i][t] = 1
+        spacei = self.char2int[' ']
+        vec[i+1:, spacei] = 1
+        return vec
+    
+    def one_hot(self, n, size):
+        v = np.zeros((size,))
+        v[n] = 1
+        return v
+    
+    def one_hot_decode(self, vec):
+        indexes = np.argmax(vec, axis=1)
+        words = []
+        for i in indexes:
+            words.append(self.int2word[i])
+        return words
+            
+        
+    
+    def sentense_to_vec(self, words):
+        vecs = []
+        for w in words:
+            vecs.append(self.word2vec(w))
+        vec = np.concatenate(vecs)
+        return vec
+    
 
-    def generate_v2(self, corpus, batches=-1):
-        batch_size = self.batch_size
-        seq_length = self.seuqnce_length
-        to_read = batch_size + seq_length
-        tex_data_file = open(corpus, mode='r', encoding='utf-8')
-        prev_left = tex_data_file.read(seq_length)
-        input_size = self.n_consonants + self.n_vowels
+    def gen(self, batch_size=100, n_batches=-1, windows_size=4):
         batch = 0
+        n_words = len(self.words)
+        if n_batches > 0:
+            n_words = batch_size * n_batches
+        c_word = windows_size // 2
         while True:
-            new_batch = tex_data_file.read(batch_size)
-            if len(new_batch) < batch_size or batch == batches:
-                tex_data_file.seek(0, 0)
-                batch = 0
-                continue
-            seq = prev_left + new_batch
-            batch_x = np.empty((batch_size, seq_length, input_size))
-            batch_y_c = np.empty((batch_size, self.n_consonants))
-            batch_y_v = np.empty((batch_size, self.n_vowels))
-            for b in range(batch_size):
-                text = seq[b:seq_length + b]
-                taregt = seq[seq_length + b]
-                x = self.encode_text(text)
-                batch_x[b] = x
-                c_output, v_output = self.encode_char(taregt)
-                batch_y_c[b] = c_output
-                batch_y_v[b] = v_output
-            prev_left = seq[batch_size:seq_length + batch_size]
+            x = []
+            y = []
+            for i in range(batch_size):
+                j = c_word - windows_size // 2
+                k = c_word + windows_size // 2 + 1
+                context = self.words[j:k]
+                target = context.pop(windows_size//2)
+                vec = self.sentense_to_vec(context)
+                x.append(vec)
+                y.append(self.one_hot(self.word2int[target], len(self.vocab)))
+                c_word += 1
             batch += 1
-            yield batch_x, [batch_y_c, batch_y_v]
+            if c_word > n_words - windows_size // 2:
+                print("word ", c_word)
+                c_word = windows_size // 2
+            rand = np.random.choice(batch_size, size=batch_size, replace=False)
+            x = np.stack(x)
+            x = x.reshape((x.shape[0], x.shape[1], x.shape[2],1))
+            y = np.stack(y)
+            yield x, y
 
-    def generate_v3(self, corpus, batches=-1):
-        batch_size = self.batch_size
-        seq_length = self.seuqnce_length
-        to_read = batch_size + seq_length
-        tex_data_file = open(corpus, mode='r', encoding='utf-8')
-        prev_left = tex_data_file.read(seq_length)
-        input_size = len(self.char2int) + 1
-        batch = 0
-        while True:
-            new_batch = tex_data_file.read(batch_size)
-            if len(new_batch) < batch_size or batch == batches:
-                tex_data_file.seek(0, 0)
-                batch = 0
-                continue
-            seq = prev_left + new_batch
-            batch_x = np.empty((batch_size, seq_length, input_size))
-            batch_y_c = np.empty((batch_size, self.n_consonants))
-            batch_y_v = np.empty((batch_size, self.n_vowels))
-            for b in range(batch_size):
-                text = seq[b:seq_length + b]
-                taregt = seq[seq_length + b]
-                num_encoded = self.encode_text_to_num(text)
-                hots = []
-                for num in num_encoded:
-                    hots.append(one_hot_encode(num, input_size))
-                hots = np.stack(hots)
-                batch_x[b] = hots
-                c_output, v_output = self.encode_char(taregt)
-                batch_y_c[b] = c_output
-                batch_y_v[b] = v_output
-            prev_left = seq[batch_size:seq_length + batch_size]
-            batch += 1
-            yield batch_x, [batch_y_c, batch_y_v]
 
-    def generate_v4(self, corpus, batches=-1):
-        batch_size = self.batch_size
-        seq_length = self.seuqnce_length
-        to_read = batch_size + seq_length
-        tex_data_file = open(corpus, mode='r', encoding='utf-8')
-        prev_left = tex_data_file.read(seq_length)
-        input_size = self.n_consonants + self.n_vowels
-        output_size = len(self.char2int) + 1
-        batch = 0
-        while True:
-            new_batch = tex_data_file.read(batch_size)
-            if len(new_batch) < batch_size or batch == batches:
-                tex_data_file.seek(0, 0)
-                batch = 0
-                continue
-            seq = prev_left + new_batch
-            batch_x = np.empty((batch_size, seq_length, input_size))
-            batch_y = np.empty((batch_size, output_size))
-            for b in range(batch_size):
-                text = seq[b:seq_length + b]
-                taregt = seq[seq_length + b]
-                x = self.encode_text(text)
-                batch_x[b] = x
-                output = one_hot_encode(self.char2int[taregt], output_size)
-                batch_y[b] = output
-            prev_left = seq[batch_size:seq_length + batch_size]
-            batch += 1
-            yield batch_x, batch_y
+
+
