@@ -8,3 +8,4 @@ helper_scripts/
 model_weights/
 *.db
 *.sqlite
+models/*

@@ -15,6 +15,15 @@ def look2vec(batch, label=False):
         vecs[i] = vec
     return vecs
 
+def load_last_state(name):
+    folder = "models/{0}/*.hdf5".format(name)
+    list_of_files = glob.glob(folder)
+    if len(list_of_files) == 0:
+        return 0
+    last_state = list(sorted(list_of_files))[-1]
+    print("Loading State: " + last_state)
+    epoch = int(last_state.split('-')[1])
+    return name, epoch
 
 dg = DataGen()
 batch_size = 128
@@ -28,6 +37,10 @@ valid_window = 100  # Only pick dev samples in the head of the distribution.
 np.random.seed(1000)
 n_features = len(dg.char2int)
 n_chars = 11
+
+steps_per_epoch = int(len(data) * num_skips / batch_size)  # //1000
+num_steps = 2
+model_name = "save_test"
 
 graph = tf.Graph()
 optimizer, loss, embed, train_inputs, train_labels, normalized_embeddings = embedding_model(graph,
@@ -43,10 +56,9 @@ gru_optimizer, gru_acc, gru_loss, gru_input, gru_targets = syntax_model(graph, e
                                                                         n_features=n_features)
 with graph.as_default():
     init = tf.global_variables_initializer()
+    saver = tf.train.Saver()
 
-steps_per_epoch = int(len(data) * num_skips / batch_size)#//1000
-print(steps_per_epoch)
-num_steps = 2
+
 config = tf.ConfigProto(allow_soft_placement=True)
 with tf.Session(graph=graph, config=config) as session:
 
@@ -77,5 +89,8 @@ with tf.Session(graph=graph, config=config) as session:
         step_log = "Epoch: {0} Embed Loss: {1} GRU Loss: {2} GRU Acc: {3}".format(
             step, ave_embed_loss, ave_gru_loss, ave_acc)
         print(step_log)
+
+        name = "models/model-{0}-{1:.2}.ckpt".format(name, step, ave_acc)
+        save_path = saver.save(session, name)
 
     final_embeddings = normalized_embeddings.eval()
