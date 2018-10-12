@@ -52,25 +52,10 @@ def check_last_run(model_folder):
     current_epoch = int(current_epoch)
     epoches = int(epoches)
     return current_epoch, epoches, model_name
-    
-
-n_words = len(data)
-steps_per_batch = n_words // batch_size
-epoches = 20
-current_epoch = 0
 
 model_name = "first_model"
 model_folder = './log/'+ model_name
-last_model_name = None
-if not os.path.exists(model_folder):
-    os.mkdir(model_folder)
-
-last = check_last_run(model_folder)
-if last is not None:
-    epoches = last[1]
-    current_epoch = last[0] 
-    last_model_name = last[-1] + "-" + str(current_epoch)
-
+model_name = model_folder + "/model-19.ckpt-19"
 graph = tf.Graph()
 with graph.as_default():
 
@@ -115,84 +100,16 @@ with graph.as_default():
     with tf.name_scope('optimizer'):
         optimizer = tf.train.GradientDescentOptimizer(1.0).minimize(loss)
 
-    # Compute the cosine similarity between minibatch examples and all embeddings.
     norms = tf.sqrt(tf.reduce_sum(tf.square(embeddings), 1, keepdims=True))
     normalized_embeddings = embeddings / norms
-
-    # Merge all summaries.
-    merged = tf.summary.merge_all()
-
-    # Add variable initializer.
     init = tf.global_variables_initializer()
-
-    # Create a saver.
     saver = tf.train.Saver()
 
 
 with tf.Session(graph=graph) as session:
     # Open a writer to write summaries.
-    writer = tf.summary.FileWriter('./log', session.graph)
-    if last_model_name is not None:
-        print("Loading model: ", last_model_name)
-        saver.restore(session, last_model_name)
-        current_epoch += 1
-    else:
-        init.run()
-    # We must initialize all variables before we use them.
-    
-    print('Initialized', current_epoch, epoches)
-    for e in range(current_epoch, epoches):
-        average_loss = 0
-        start_time = time.time()
-        for step in range(steps_per_batch):
-            batch_inputs, batch_labels = generate_batch(data, batch_size, num_skips,
-                                                        skip_window)
-            feed_dict = {train_inputs: batch_inputs,
-                         train_labels: batch_labels}
-
-            # Define metadata variable.
-            run_metadata = tf.RunMetadata()
-
-            _, summary, loss_val = session.run(
-                [optimizer, merged, loss],
-                feed_dict=feed_dict,  # feed dict
-                run_metadata=run_metadata)  # visualize in tensorboard
-            average_loss += loss_val
-        
-        # Save the model for checkpoints.
-        checkpoint_name = model_folder + "/model-{0}.ckpt".format(e)
-        saver.save(session, checkpoint_name, global_step=e)
-        checkpoint = "{0} {1} {2}\n".format(e, epoches, checkpoint_name)
-        open(model_folder + "/record.txt", 'a').write(checkpoint)
-
-        elapsed_time = time.time() - start_time
-        elapsed_mins = elapsed_time / 60
-        # Add returned summaries to writer in each step.
-        writer.add_summary(summary, e)
-        # Add metadata to visualize the graph for the last run.
-        writer.add_run_metadata(run_metadata, 'step%d' % e)
-
-        average_loss /= steps_per_batch
-        # The average loss is an estimate of the loss over the last 2000 batches.
-        ee = e + 1
-        log_text = "Progress: {0}/{1} {5:.2f}% Averlage loss: {2:.2f} Time: {3:.2f}/{4:.2f}".format(
-            ee, epoches, average_loss, elapsed_mins * ee, (elapsed_mins * epoches), (ee * 100/epoches))
-        print(log_text)
-        average_loss = 0
-
+    saver.restore(session, model_name)
     # numpy array of the normalized embeddings
     final_embeddings = normalized_embeddings.eval()
-
-    # Write corresponding labels for the embeddings.
-    with open('./log/metadata.tsv', 'w', encoding='utf8') as f:
-        for i in range(vocab_size):
-            f.write(int2word[i] + '\n')
-
-    # Create a configuration for visualizing embeddings with the labels in TensorBoard.
-    config = projector.ProjectorConfig()
-    embedding_conf = config.embeddings.add()
-    embedding_conf.tensor_name = embeddings.name
-    embedding_conf.metadata_path = os.path.join('./log', 'metadata.tsv')
-    projector.visualize_embeddings(writer, config)
-
-writer.close()
+    to_gensim_model(gensim_model, word2int, final_embeddings)
+    print(gensim_model.accuracy('data/semantic.txt'))
