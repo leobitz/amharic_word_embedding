@@ -16,10 +16,11 @@ def get_data(name, max_words=-1):
             words - list containing words in the corpus with thier sequence
             vocab - list of the unique words
     """
-
-    words = open(name, encoding='utf8').read().split()
+    text = open(name, encoding='utf8').read()
     if max_words != -1:
-        words = words[:max_words] # upto max_words only
+        max_chars = 16 * max_words
+        text = text[:max_chars]
+    words = text.split()
     vocab = list(set(words))
 
     return words, vocab
