@@ -4,8 +4,8 @@ from gensim_wrapper import *
 import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
-batch_size = 200
-embedding_size = 200
+batch_size = 128
+embedding_size = 128
 skip_window = 2
 num_skips = 2
 num_sampled = 1000

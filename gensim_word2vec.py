@@ -17,6 +17,7 @@ def anomaly(model):
 
 sentenses = open('data/all.txt', encoding='utf-8').read().split('*')
 sentenses = [s.strip().split() for s in sentenses]
-model = gensim.models.Word2Vec(sentenses, size=200, iter=1, min_count=1)
+model = gensim.models.Word2Vec(sentenses, size=128, iter=6, min_count=1)
 result = model.accuracy('data/syntax.txt')
+result = model.accuracy('data/semantic.txt')
 

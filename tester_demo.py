@@ -6,12 +6,12 @@ import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 batch_size = 128
-embedding_size = 200
+embedding_size = 128
 # skip_window = 1
 # num_skips = 2
 # num_sampled = 64
 
-model_name = "log/full_200/model-0"
+model_name = "log/full_200/model-1"
 name = "test"
 tester = Tester(name)
 gensim_model = GensimWrapper(embedding_size, 0)

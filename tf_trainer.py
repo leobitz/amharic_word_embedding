@@ -62,15 +62,12 @@ class Trainer:
                 self.current_epoch += 1
             else:
                 init.run()
-
+            gen = generate_batch_v2(self.batch_size, self.skip_window)
             for step in range(self.current_epoch, epoches):
                 average_loss = 0
                 start_time = time.time()
                 for s in range(steps_per_batch):
-                    batch_inputs, batch_labels = generate_batch(self.data,
-                                                                self.batch_size,
-                                                                self.num_skips,
-                                                                self.skip_window)
+                    batch_inputs, batch_labels = next(gen)
 
                     average_loss += w2v_model.train_once(session,
                                                      batch_inputs, batch_labels)
