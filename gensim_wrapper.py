@@ -15,7 +15,7 @@ class GensimWrapper:
         self._create_model()
 
     def _prepare_data(self):
-        sentenses = open('data/all.txt', encoding='utf-8').read().split('*')
+        sentenses = open('data/news.txt', encoding='utf-8').read().split('*')
         self.data = [s.strip().split() for s in sentenses]
 
     def _create_model(self):
@@ -54,8 +54,11 @@ class GensimWrapper:
             word2int - dictionary that maps words to int index
             embedding - a new learned embeddings by tensorflow
         """
+        self.model.wv.init_sims()
         for gindex in range(len(self.model.wv.index2word)):
             gword = self.model.wv.index2word[gindex]
             index = word2int[gword]
             embedding = embeddings[index]
+            # print(gindex, gword, type(self.model.wv.vectors_norm))
+            self.model.wv.vectors_norm[gindex] = embedding
             self.model.wv.vectors[gindex] = embedding

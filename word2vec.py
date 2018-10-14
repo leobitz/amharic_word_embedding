@@ -8,7 +8,7 @@ class Word2Vec:
         self.vocab_size = vocab_size
         self.embedding_size = embed_size
         self.batch_size = batch_size
-        self.num_sampled = 64
+        self.num_sampled = num_sampled
         self.build()
 
     def build(self):
@@ -62,6 +62,7 @@ class Word2Vec:
             tf.square(self.embeddings), 1, keepdims=True))
         normalized_embeddings = self.embeddings / norms
         final_embeddings = normalized_embeddings.eval()
+        # final_embeddings = self.embeddings.eval()
         return final_embeddings
 
     def train_once(self, session, batch_inputs, batch_labels):

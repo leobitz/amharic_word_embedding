@@ -121,7 +121,7 @@ def ints2words(ints, int2word):
 
 def generate_batch_v2(batch_size, skip_window):
     assert batch_size % skip_window == 0
-    sentenses = open('data/all.txt', encoding='utf-8').read().split('*')
+    sentenses = open('data/news.txt', encoding='utf-8').read().split('*')
     sentenses = [s.strip().split() for s in sentenses]
     data, word2int, int2word = build_dataset_v2(sentenses)
     ci = skip_window  # current_index

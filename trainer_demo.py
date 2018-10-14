@@ -8,7 +8,7 @@ batch_size = 128
 embedding_size = 128
 skip_window = 2
 num_skips = 2
-num_sampled = 1000
+num_sampled = 64
 
 trainer = Trainer(train_name="full_200", 
                 batch_size=batch_size,

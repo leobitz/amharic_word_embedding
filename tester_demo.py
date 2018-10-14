@@ -11,7 +11,7 @@ embedding_size = 128
 # num_skips = 2
 # num_sampled = 64
 
-model_name = "log/full_200/model-1"
+model_name = "log/full_200/model-7"
 name = "test"
 tester = Tester(name)
 gensim_model = GensimWrapper(embedding_size, 0)
