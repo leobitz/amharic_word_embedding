@@ -2,6 +2,7 @@ from tf_tester import Tester
 from tf_trainer import *
 from word2vec import *
 from gensim_wrapper import *
+from utils import Utils
 import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
@@ -23,3 +24,5 @@ with graph.as_default():
                         embed_size=embedding_size,
                         batch_size=batch_size)
 tester.evaluate(graph, wv_model, gensim_model, model_name)
+
+utils = Utils(tester.word2int, tester.embeddings)

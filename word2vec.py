@@ -70,7 +70,7 @@ class Word2Vec:
                      self.train_labels: batch_labels}
 
         _, loss_val = session.run(
-            [self.optimizer, self.loss],
+            [self.loss, self.optimizer],
             feed_dict=feed_dict) 
         return loss_val
     

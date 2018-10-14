@@ -61,4 +61,4 @@ class GensimWrapper:
             embedding = embeddings[index]
             # print(gindex, gword, type(self.model.wv.vectors_norm))
             self.model.wv.vectors_norm[gindex] = embedding
-            self.model.wv.vectors[gindex] = embedding
+            # self.model.wv.vectors[gindex] = embedding

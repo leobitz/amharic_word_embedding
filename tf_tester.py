@@ -11,6 +11,7 @@ class Tester:
     def __init__(self, train_name, max_words=-1):
         self.train_name = train_name
         self._prepare_data(max_words)
+        self.embeddings = None
 
     
     def _prepare_data(self, max_words):
@@ -27,6 +28,7 @@ class Tester:
         with tf.Session(graph=graph) as session:
             self.saver.restore(session, model_name)
             embeds = w2v_model.get_embedding()
+            self.embeddings = embeds
             gensim_model.set_embeddings(self.word2int, embeds)
             gensim_model.evaluate()
                 
