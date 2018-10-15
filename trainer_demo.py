@@ -6,7 +6,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 batch_size = 128
 embedding_size = 128
-skip_window = 2
+skip_window = 4
 num_skips = 2
 num_sampled = 64
 

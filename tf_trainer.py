@@ -19,7 +19,7 @@ class Trainer:
         self._prepare_last_model()
     
     def _prepare_data(self, max_words):
-        filename = "data/all.txt"
+        filename = "data/news.txt"
         self.words, self.vocab = get_data(filename, max_words=max_words)
         self.data, self.word2int, self.int2word = build_dataset(self.words)
         self.vocab_size = len(self.vocab)

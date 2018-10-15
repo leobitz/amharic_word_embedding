@@ -9,7 +9,7 @@ import os
 from tensorflow.contrib.tensorboard.plugins import projector
 
 np.random.seed(1000)
-filename = "data/all.txt"
+filename = "data/news.txt"
 batch_size = 128
 embedding_size = 128  # Dimension of the embedding vector.
 skip_window = 1  # How many words to consider left and right.
