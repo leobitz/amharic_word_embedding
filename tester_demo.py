@@ -14,7 +14,7 @@ embedding_size = 128
 
 model_name = "log/full_200/model-7"
 name = "test"
-tester = Tester(name)
+tester = Tester()
 gensim_model = GensimWrapper(embedding_size, 0)
 vocab_size = tester.vocab_size
 

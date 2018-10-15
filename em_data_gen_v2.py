@@ -124,6 +124,7 @@ def generate_batch_v2(batch_size, skip_window):
     sentenses = open('data/news.txt', encoding='utf-8').read().split('*')
     sentenses = [s.strip().split() for s in sentenses]
     data, word2int, int2word = build_dataset_v2(sentenses)
+    print("Vocab Size: {0}".format(len(word2int)))
     ci = skip_window  # current_index
     window = 2 * skip_window + 1  # left word right
     while True:

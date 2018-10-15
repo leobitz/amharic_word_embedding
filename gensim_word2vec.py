@@ -18,14 +18,17 @@ def anomaly(model):
 
 sentenses = open('data/news.txt', encoding='utf-8').read().split('*')
 sentenses = [s.strip().split() for s in sentenses]
-model = gensim.models.Word2Vec(sentenses, size=128, iter=1, min_count=1)
+model = gensim.models.Word2Vec(sentenses, size=128, iter=10, min_count=1)
 result = model.accuracy('data/syntax.txt')
 result = model.accuracy('data/semantic.txt')
-# model.wv.init_sims()
-# for gindex in range(len(model.wv.index2word)):
-#     gword = model.wv.index2word[gindex]
-#     model.wv.vectors_norm[gindex] = np.random.random(128)
 
-# result = model.accuracy('data/syntax.txt')
-# result = model.accuracy('data/semantic.txt')
+model1 = gensim.models.Word2Vec(sentenses, size=128, iter=0, min_count=1)
+model.wv.init_sims()
+model1.wv.init_sims()
+for gindex in range(len(model.wv.index2word)):
+    gword = model.wv.index2word[gindex]
+    model1.wv.vectors_norm[gindex] = model1.wv.vectors_norm[gindex]
+
+result = model1.accuracy('data/syntax.txt')
+result = model1.accuracy('data/semantic.txt')
 
