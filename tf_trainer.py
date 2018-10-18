@@ -3,6 +3,7 @@ import numpy as np
 import collections
 from em_data_gen_v2 import *
 import time
+from word2vec import *
 import os
 
 
@@ -10,32 +11,47 @@ class Trainer:
 
     def __init__(self, train_name, batch_size=128, skip_window=1, max_words=-1):
         self.batch_size = batch_size
-        self.skip_window = skip_window 
+        self.skip_window = skip_window
         self.num_skips = 2
         self.train_name = train_name
         self.current_epoch = 0
         self._prepare_folder()
         self._prepare_data(max_words)
         self._prepare_last_model()
-    
+
     def _prepare_data(self, max_words):
-        filename = "data/all.txt"
+        filename = "data/news.txt"
         self.words, self.vocab = get_data(filename, max_words=max_words)
-        self.data, self.word2int, self.int2word = build_dataset(self.words)
+        self.data, self.word2freq, self.word2int, self.int2word = build_dataset(
+            self.words)
+        freqs = np.array([self.word2freq[word] for word in self.word2int])
+        freqs = np.power(freqs, .75)
+        freqs = np.round(freqs / np.min(freqs)).astype(np.int32)
+        n_samples = np.sum(freqs)
+        self.sample_words = np.empty((n_samples), dtype=np.int64)
+        i = 0
+        word_index = 0
+        while True:
+            if word_index >= len(freqs):
+                break
+            val = freqs[word_index]
+            self.sample_words[i:i + val] = word_index
+            i += val
+            word_index += 1
         self.vocab_size = len(self.vocab)
         print("Words: {0} Vocab: {1}".format(len(self.words), self.vocab_size))
-    
+
     def _prepare_folder(self):
-        self.model_folder = './log/'+ self.train_name
+        self.model_folder = './log/' + self.train_name
         if not os.path.exists(self.model_folder):
             os.mkdir(self.model_folder)
-    
+
     def _prepare_last_model(self):
         self.last_model_name = None
         last = self.get_last_run()
         if last is not None:
             self.current_epoch = last[0]
-            self.last_model_name = last[-1] 
+            self.last_model_name = last[-1]
 
     def get_last_run(self):
         file = self.model_folder + "/record.txt"
@@ -47,8 +63,16 @@ class Trainer:
         epoches = int(epoches)
         return current_epoch, epoches, model_name + '-' + str(current_epoch)
 
-    def train(self, graph, w2v_model, gensim_model, epoches=10):
+    def train(self, embed_size, epoches=10):
+        graph = tf.Graph()
         with graph.as_default():
+            unigrams = list(self.word2freq.values())
+            # unigrams = np.array(unigrams)
+            # unigrams = unigrams/np.max(unigrams)
+            w2v_model = Word2Vec(vocab_size=self.vocab_size,
+                        embed_size=embed_size,
+                        batch_size=self.batch_size,
+                        unigrams=unigrams)
             init = tf.global_variables_initializer()
             self.saver = tf.train.Saver()
 
@@ -62,24 +86,25 @@ class Trainer:
                 self.current_epoch += 1
             else:
                 init.run()
-            gen = generate_batch_v2(self.batch_size, self.skip_window)
+            gen = generate_batch_v2(
+                self.data, self.batch_size, self.skip_window)
             for step in range(self.current_epoch, epoches):
                 average_loss = 0
                 start_time = time.time()
                 for s in range(steps_per_batch):
                     batch_inputs, batch_labels = next(gen)
-
+                    samples = np.random.choice(self.sample_words, self.batch_size).reshape((self.batch_size, 1))
                     average_loss += w2v_model.train_once(session,
-                                                     batch_inputs, batch_labels)
+                                                         batch_inputs, batch_labels, samples)
                 self.save_model(session, self.model_folder, step, epoches)
-                
+
                 elapsed_time = time.time() - start_time
                 elapsed_mins = elapsed_time / 60
 
                 average_loss /= steps_per_batch
                 ee = step + 1
                 log_text = "Progress: {0}/{1} {5:.2f}% Averlage loss: {2:.2f} Time: {3:.2f}/{4:.2f}".format(
-                    ee, epoches, average_loss, elapsed_mins * ee, (elapsed_mins * epoches), (ee * 100/epoches))
+                    ee, epoches, average_loss, elapsed_mins * ee, (elapsed_mins * epoches), (ee * 100 / epoches))
                 print(log_text)
                 average_loss = 0
 

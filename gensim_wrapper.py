@@ -2,13 +2,14 @@ import gensim
 import logging
 import collections
 
-logging.basicConfig(
-    format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
 
 
 class GensimWrapper:
 
-    def __init__(self, embed_size=128, iter=5):
+    def __init__(self, embed_size=128, iter=5, log=False):
+        if log:
+            logging.basicConfig(
+                    format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
         self.embed_size = embed_size
         self.iter = iter
         self._prepare_data()

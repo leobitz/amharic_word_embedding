@@ -1,20 +1,23 @@
 import numpy as np
 import tensorflow as tf
+from tensorflow.python.ops import candidate_sampling_ops
 
 
 class Word2Vec:
 
-    def __init__(self, vocab_size, embed_size=128, batch_size=128, num_sampled=64):
+    def __init__(self, vocab_size, embed_size=128, batch_size=128, num_sampled=64, unigrams=None):
         self.vocab_size = vocab_size
         self.embedding_size = embed_size
         self.batch_size = batch_size
         self.num_sampled = num_sampled
+        self.unigrams = unigrams
         self.build()
 
     def build(self):
         self._create_placeholders()
         self._create_embedding()
         self._create_loss()
+        self._create_final_embedding()
         self._create_optimizer()
 
     def _create_placeholders(self):
@@ -42,6 +45,24 @@ class Word2Vec:
                 self.nce_biases = tf.Variable(tf.zeros([self.vocab_size]))
 
     def _create_loss(self):
+        # sampled = candidate_sampling_ops.uniform_candidate_sampler(
+        #     true_classes=self.sample_labels,
+        #     num_true=1,
+        #     num_sampled=self.num_sampled,
+        #     unique=True,
+        #     range_max=self.vocab_size,
+        #     seed=None
+        # )
+        labels_matrix = tf.cast(self.train_labels, dtype=tf.int64)
+        sampled_values = candidate_sampling_ops.fixed_unigram_candidate_sampler(
+            true_classes=labels_matrix,
+            num_true=1,
+            num_sampled=self.num_sampled,
+            unique=True,
+            range_max=self.vocab_size,
+            distortion=0.75,
+            unigrams=self.unigrams
+        )
         with tf.name_scope('loss'):
             self.loss = tf.reduce_mean(
                 tf.nn.nce_loss(
@@ -50,12 +71,17 @@ class Word2Vec:
                     labels=self.train_labels,
                     inputs=self.embed,
                     num_sampled=self.num_sampled,
-                    num_classes=self.vocab_size))
+                    num_classes=self.vocab_size,
+                    sampled_values=sampled_values))
 
     def _create_optimizer(self):
         with tf.name_scope('optimizer'):
             self.optimizer = tf.train.GradientDescentOptimizer(
                 1.0).minimize(self.loss)
+    def _create_final_embedding(self):
+        norms = tf.sqrt(tf.reduce_sum(
+            tf.square(self.embeddings), 1, keepdims=True))
+        self.normalized_embeddings = self.embeddings / norms
 
     def get_embedding(self):
         norms = tf.sqrt(tf.reduce_sum(
@@ -65,13 +91,16 @@ class Word2Vec:
         # final_embeddings = self.embeddings.eval()
         return final_embeddings
 
-    def train_once(self, session, batch_inputs, batch_labels):
+    def get_embedding_v2(self, sess):
+        embeds = sess.run(self.normalized_embeddings)
+        # print(embeds.get_size())
+        return embeds
+
+    def train_once(self, session, batch_inputs, batch_labels, samples):
         feed_dict = {self.train_inputs: batch_inputs,
                      self.train_labels: batch_labels}
 
-        _, loss_val = session.run(
+        loss_val, _ = session.run(
             [self.loss, self.optimizer],
-            feed_dict=feed_dict) 
+            feed_dict=feed_dict)
         return loss_val
-    
-        

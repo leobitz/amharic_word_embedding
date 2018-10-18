@@ -8,7 +8,7 @@ class Utils:
         self.word2int = word2int
         self.embedding = embedding
     
-    def cosine_sim(word1, word2):
+    def cosine_sim(self, word1, word2):
         v1 = self.embedding[self.word2int[word1]]
         v2 = self.embedding[self.word2int[word2]]
         return self.cosine_similarity(v1, v2)
@@ -40,5 +40,6 @@ class Utils:
 
     def closest_analogy(self, word2int, M, v1, v2, v3):
         v = v1 - v2 + v3
-        sims = similarity(M, v)
-        return sort_by_similarity(word2int, sims)
+        v = v / norm(v)
+        sims = self.similarity(M, v)
+        return self.sort_by_similarity(word2int, sims)
