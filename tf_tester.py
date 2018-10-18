@@ -15,7 +15,7 @@ class Tester:
     def _prepare_data(self, max_words):
         filename = "data/news.txt"
         self.words, self.vocab = get_data(filename, max_words=max_words)
-        self.data, self.word2int, self.int2word = build_dataset(self.words)
+        self.data, self.freq, self.word2int, self.int2word = build_dataset(self.words)
         self.vocab_size = len(self.vocab)
         print("Words: {0} Vocab: {1}".format(len(self.words), self.vocab_size))
 
@@ -24,12 +24,12 @@ class Tester:
             self.saver = tf.train.Saver()
         with tf.Session(graph=graph) as session:
             self.saver.restore(session, model_name)
-            embeds = w2v_model.get_embedding()
+            embeds = w2v_model.get_embedding_v2(session)
             self.embeddings = embeds
             gensim_model.set_embeddings(self.word2int, embeds)
             gensim_model.evaluate()
 
-    def evaluate(self, gensim_model, embeddings):
+    def evaluatev2(self, gensim_model, embeddings):
         self.embeddings = embeddings
         gensim_model.set_embeddings(self.word2int, self.embeddings)
         gensim_model.evaluate()

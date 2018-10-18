@@ -45,7 +45,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 # Give a folder path as an argument with '--log_dir' to save
 # TensorBoard summaries. Default is a log folder in current directory.
 current_path = os.path.dirname(os.path.realpath(sys.argv[0]))
-
+np.random.seed(7)
 parser = argparse.ArgumentParser()
 parser.add_argument(
     '--log_dir',
@@ -252,7 +252,7 @@ with graph.as_default():
     saver = tf.train.Saver()
 
 # Step 5: Begin training.
-num_steps = 1000001
+num_steps = 300001
 
 with tf.Session(graph=graph) as session:
     # Open a writer to write summaries.
@@ -309,7 +309,7 @@ with tf.Session(graph=graph) as session:
     final_embeddings = normalized_embeddings.eval()
 
 tester = Tester()
-gensim_model = GensimWrapper(embedding_size, 0)
+gensim_model = GensimWrapper(embedding_size, 0, log=False)
 vocab_size = tester.vocab_size
 
 graph = tf.Graph()
@@ -317,8 +317,11 @@ with graph.as_default():
     wv_model = Word2Vec(vocab_size=vocab_size,
                         embed_size=embedding_size,
                         batch_size=batch_size)
-tester.evaluate(gensim_model, final_embeddings)
-
+tester.evaluatev2(gensim_model, final_embeddings)
+utils = Utils(dictionary, final_embeddings)
+print(utils.sorted_sim('አቶ'))
+print(utils.sorted_sim('ነው'))
+print(utils.sorted_sim('ኢትዮጵያ'))
 # utils = Utils(tester.word2int, tester.embeddings)
 #   # Write corresponding labels for the embeddings.
 #   with open(FLAGS.log_dir + '/metadata.tsv', 'w') as f:

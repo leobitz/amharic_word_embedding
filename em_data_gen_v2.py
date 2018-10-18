@@ -46,15 +46,18 @@ def build_dataset(words):
 
     word2int = {}
     data = []
+    word2freq = {}
     for word in words:
         if word not in word2int:
+            word2freq[word] = 0
             data.append(len(word2int))
             word2int[word] = len(word2int)
         else:
             data.append(word2int[word])
+        word2freq[word] += 1.0
 
     int2word = dict(zip(word2int.values(), word2int.keys()))
-    return data, word2int, int2word
+    return data, word2freq, word2int, int2word
 
 
 data_index = 0
@@ -119,7 +122,7 @@ def ints2words(ints, int2word):
     return words
 
 
-def generate_batch_v2(batch_size, skip_window):
+def generate_batch_v3(batch_size, skip_window):
     assert batch_size % skip_window == 0
     sentenses = open('data/news.txt', encoding='utf-8').read().split('*')
     sentenses = [s.strip().split() for s in sentenses]
@@ -140,6 +143,26 @@ def generate_batch_v2(batch_size, skip_window):
                 batch_inputs[batch_index] = context[ic]
                 batch_labels[batch_index, 0] = target
                 batch_index += 1
+            ci += 1
+        if len(data) - ci - skip_window < batch_size:
+            ci = skip_window
+        yield batch_inputs, batch_labels
+
+def generate_batch_v2(data, batch_size, skip_window):
+    assert batch_size % skip_window == 0
+    ci = skip_window  # current_index
+    while True:
+        batch_inputs = np.ndarray(shape=(batch_size), dtype=np.int32)
+        batch_labels = np.ndarray(shape=(batch_size, 1), dtype=np.int32)
+        batch_index = 0
+        for batch_index in range(0, batch_size, skip_window * 2):  # fill the batch inputs
+            context = data[ci - skip_window:ci + skip_window + 1]
+            # remove the target from context words
+            target = context.pop(skip_window)
+            context = random.sample(context, skip_window * 2)
+            batch_inputs[batch_index:batch_index +
+                         skip_window * 2] = context
+            batch_labels[batch_index:batch_index + skip_window * 2, 0] = target
             ci += 1
         if len(data) - ci - skip_window < batch_size:
             ci = skip_window
