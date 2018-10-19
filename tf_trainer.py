@@ -22,22 +22,10 @@ class Trainer:
     def _prepare_data(self, max_words):
         filename = "data/news.txt"
         self.words, self.vocab = get_data(filename, max_words=max_words)
+        # words, self.word2freq, self.word2int, self.int2word = gather_word_freqs(self.words)
+        # self.data = [self.word2int[word] for word in words]
         self.data, self.word2freq, self.word2int, self.int2word = build_dataset(
             self.words)
-        freqs = np.array([self.word2freq[word] for word in self.word2int])
-        freqs = np.power(freqs, .75)
-        freqs = np.round(freqs / np.min(freqs)).astype(np.int32)
-        n_samples = np.sum(freqs)
-        self.sample_words = np.empty((n_samples), dtype=np.int64)
-        i = 0
-        word_index = 0
-        while True:
-            if word_index >= len(freqs):
-                break
-            val = freqs[word_index]
-            self.sample_words[i:i + val] = word_index
-            i += val
-            word_index += 1
         self.vocab_size = len(self.vocab)
         print("Words: {0} Vocab: {1}".format(len(self.words), self.vocab_size))
 
@@ -66,11 +54,13 @@ class Trainer:
     def train(self, embed_size, epoches=10):
         graph = tf.Graph()
         with graph.as_default():
-            unigrams = list(self.word2freq.values())
+            unigrams = [self.word2freq[self.int2word[i]] for i in range(len(self.word2freq))]
             # unigrams = np.array(unigrams)
             # unigrams = unigrams/np.max(unigrams)
             w2v_model = Word2Vec(vocab_size=self.vocab_size,
+                        wordfreq=self.word2freq,
                         embed_size=embed_size,
+                        num_sampled=5,
                         batch_size=self.batch_size,
                         unigrams=unigrams)
             init = tf.global_variables_initializer()
@@ -86,16 +76,15 @@ class Trainer:
                 self.current_epoch += 1
             else:
                 init.run()
-            gen = generate_batch_v2(
-                self.data, self.batch_size, self.skip_window)
+            print("Final train data: {0}".format(len(self.data)))
+            gen = generate_batch_v2(self.data, self.batch_size, self.skip_window)
             for step in range(self.current_epoch, epoches):
                 average_loss = 0
                 start_time = time.time()
                 for s in range(steps_per_batch):
                     batch_inputs, batch_labels = next(gen)
-                    samples = np.random.choice(self.sample_words, self.batch_size).reshape((self.batch_size, 1))
                     average_loss += w2v_model.train_once(session,
-                                                         batch_inputs, batch_labels, samples)
+                                                         batch_inputs, batch_labels)
                 self.save_model(session, self.model_folder, step, epoches)
 
                 elapsed_time = time.time() - start_time
