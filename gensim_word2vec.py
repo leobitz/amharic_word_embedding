@@ -19,10 +19,10 @@ def anomaly(model):
 sentenses = open('data/news.txt', encoding='utf-8').read().split('*')
 sentenses = [s.strip().split() for s in sentenses]
 model = gensim.models.Word2Vec(sentenses, 
-                            size=128, 
+                            size=200, 
                             iter=10, 
                             min_count=1, 
-                            sample=0.0,
+                            sample=0.01,
                             # ns_exponent=1.0
                             )
 result = model.accuracy('data/syntax.txt')

@@ -1,4 +1,5 @@
 import collections
+from collections import Counter
 import numpy as np
 import random
 
@@ -198,6 +199,13 @@ def gather_word_freqs(split_text, subsampling = True, sampling_rate = 0.0001):
         del split_text
     return words, vocab, word_to_ix, ix_to_word
 
+def subsampling(int_words, threshold=1e-5):
+    word_counts = Counter(int_words)
+    total_count = len(int_words)
+    freqs = {word: count/total_count for word, count in word_counts.items()}
+    p_drop = {word: 1 - np.sqrt(threshold/freqs[word]) for word in word_counts}
+    train_words = [word for word in int_words if random.random() < (1 - p_drop[word])]
+    return train_words
 
 # gen = generate_batch_v2(10, 2)
 # while True:
