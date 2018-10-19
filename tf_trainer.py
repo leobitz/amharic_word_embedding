@@ -26,6 +26,7 @@ class Trainer:
         # self.data = [self.word2int[word] for word in words]
         self.data, self.word2freq, self.word2int, self.int2word = build_dataset(
             self.words)
+        self.data = subsampling(self.data)
         self.vocab_size = len(self.vocab)
         print("Words: {0} Vocab: {1}".format(len(self.words), self.vocab_size))
 
