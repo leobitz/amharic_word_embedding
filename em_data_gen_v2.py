@@ -52,8 +52,7 @@ def build_dataset(words):
             word2freq[word] = 0
             data.append(len(word2int))
             word2int[word] = len(word2int)
-        else:
-            data.append(word2int[word])
+        data.append(word2int[word])
         word2freq[word] += 1.0
 
     int2word = dict(zip(word2int.values(), word2int.keys()))
@@ -159,7 +158,7 @@ def generate_batch_v2(data, batch_size, skip_window):
             context = data[ci - skip_window:ci + skip_window + 1]
             # remove the target from context words
             target = context.pop(skip_window)
-            context = random.sample(context, skip_window * 2)
+            # context = random.sample(context, skip_window * 2)
             batch_inputs[batch_index:batch_index +
                          skip_window * 2] = context
             batch_labels[batch_index:batch_index + skip_window * 2, 0] = target
@@ -169,7 +168,39 @@ def generate_batch_v2(data, batch_size, skip_window):
         yield batch_inputs, batch_labels
 
 
+def gather_word_freqs(split_text, subsampling = True, sampling_rate = 0.0001):
+    vocab = {}
+    ix_to_word = {}
+    word_to_ix = {}
+    total = 0.0
+    for word in split_text:
+        if word not in vocab:
+            vocab[word] = 0
+            ix_to_word[len(word_to_ix)] = word
+            word_to_ix[word] = len(word_to_ix)
+        vocab[word] += 1.0
+        total += 1.0
+    if subsampling:
+        # for i, word in enumerate(split_text):
+        #     val = np.sqrt(sampling_rate * total / vocab[word])
+        #     prob = val * (1 + val)
+        #     sampling = np.random.sample()
+        #     if (sampling <= prob):
+        #         del [split_text[i]]
+        #         i -= 1
+        words = []
+        for word in split_text:
+            val = np.sqrt(sampling_rate * total / vocab[word])
+            prob = val * (1 + val)
+            sampling = np.random.sample()
+            if (sampling > prob):
+                words.append(word)
+        del split_text
+    return words, vocab, word_to_ix, ix_to_word
+
+
 # gen = generate_batch_v2(10, 2)
 # while True:
 #     x, y = next(gen)
-#     print(x.shape)
+#     for a, b = zip(x, y):
+#         print()

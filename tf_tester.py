@@ -3,6 +3,7 @@ import numpy as np
 import collections
 from em_data_gen_v2 import *
 import time
+from word2vec import *
 import os
 
 
@@ -19,12 +20,18 @@ class Tester:
         self.vocab_size = len(self.vocab)
         print("Words: {0} Vocab: {1}".format(len(self.words), self.vocab_size))
 
-    def evaluate(self, graph, w2v_model, gensim_model, model_name):
+    def evaluate(self, gensim_model, model_name, batch_size, embed_size):
+        graph = tf.Graph()
         with graph.as_default():
+            wv_model = Word2Vec(vocab_size=self.vocab_size,
+                                embed_size=embed_size,
+                                batch_size=batch_size,
+                                wordfreq=None
+                                )
             self.saver = tf.train.Saver()
         with tf.Session(graph=graph) as session:
             self.saver.restore(session, model_name)
-            embeds = w2v_model.get_embedding_v2(session)
+            embeds = wv_model.get_embedding_v2(session)
             self.embeddings = embeds
             gensim_model.set_embeddings(self.word2int, embeds)
             gensim_model.evaluate()
