@@ -125,7 +125,7 @@ class Word2Vec2:
     def _create_optimizer(self):
         with tf.name_scope('optimizer'):
             self.optimizer = tf.train.GradientDescentOptimizer(
-                1.0).minimize(self.nce_loss)
+                .1).minimize(self.nce_loss)
 
     def _create_final_embedding(self):
         norms = tf.sqrt(tf.reduce_sum(
