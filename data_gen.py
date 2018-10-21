@@ -2,42 +2,46 @@ import numpy as np
 
 class DataGen:
     
-    def __init__(self, percent=100):
-        self.n_consonant = 0
-        self.n_vowel = 10
-        self.corpus = open('data/news.txt', encoding='utf8').read()
-        self.words = self.corpus.split(' ')
-        width = int(len(self.words) * percent/100)
-        self.words = self.words[:width]
-        self.char2int, self.int2char, self.char2tup, self.tup2char = self.load_charset()
-        self.vocab, self.word2int, self.int2word = self.get_vocab(self.words)
-        self.max_word_len = 11
-        del self.corpus
+    def __init__(self, filename="data/news.txt", max_words=-1):
+        self.corpus = open(filename, encoding='utf8').read()
+        words = self.corpus.split(' ')
+        if max_words == -1:
+            max_words = len(self.words)
+        words = words[:max_words]
+        self.preprocess(words)
+        self.build_vocab(words)
+        self.build_charset()
     
-    def get_vocab(self, words):
-        word2int = {}
-        int2word = {}
-        vocab = list(sorted(set(words)))
-        for word in vocab:
-            int2word[len(word2int)] = word
-            word2int[word] = len(word2int)
-        return vocab, word2int, int2word
+    def preprocess(self, words):
+        return words
+
+    def build_vocab(self, words):
+        self.word2int = {}
+        self.int2word = {}
+        self.word2freq = {}
+        for word in words:
+            if word not in self.word2int:
+                index = len(self.word2int)
+                self.int2word[index] = word
+                self.word2int[word] = index
+                self.word2freq[word] = 0
+            self.word2freq[word] += 1
     
-    def load_charset(self):
+    def build_charset(self):
         charset = open('data/charset.txt', encoding='utf-8').readlines()
         self.n_consonant = len(charset)
-        char2int, int2char, char2tup, tup2char = {}, {}, {}, {}
+        self.n_vowel = 10
+        self.char2int, self.int2char, self.char2tup, self.tup2char = {}, {}, {}, {}
         j = 0
         for k in range(len(charset)):
             row = charset[k][:-1].split(',')
             for i in range(len(row)):
-                char2tup[row[i]] = (k, i)
-                int2char[j] = row[i]
-                char2int[row[i]] = j
+                self.char2tup[row[i]] = (k, i)
+                self.int2char[j] = row[i]
+                self.char2int[row[i]] = j
                 tup = "{0}-{1}".format(k, i)
-                tup2char[tup] = row[i]
+                self.tup2char[tup] = row[i]
                 j += 1
-        return char2int, int2char, char2tup, tup2char
         
     
     def word2vec(self, word):
@@ -57,6 +61,7 @@ class DataGen:
     def word2vec2(self, word):
         max_n_char = len(self.char2int)
         vec = np.zeros((self.max_word_len, max_n_char), dtype=np.float32)
+        print(word, len(word))
         for i in range(len(word)):
             char = word[i]
             t = self.char2int[char]
@@ -77,8 +82,6 @@ class DataGen:
             words.append(self.int2word[i])
         return words
             
-        
-    
     def sentense_to_vec(self, words):
         vecs = []
         for w in words:
@@ -86,7 +89,6 @@ class DataGen:
         vec = np.concatenate(vecs)
         return vec
     
-
     def gen(self, batch_size=100, n_batches=-1, windows_size=4):
         batch = 0
         n_words = len(self.words)

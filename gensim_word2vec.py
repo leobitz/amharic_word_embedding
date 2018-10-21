@@ -20,9 +20,9 @@ sentenses = open('data/news.txt', encoding='utf-8').read().split('*')
 sentenses = [s.strip().split() for s in sentenses]
 model = gensim.models.Word2Vec(sentenses, 
                             size=200, 
-                            iter=10, 
+                            iter=0, 
                             min_count=1, 
-                            sample=0.01,
+                            sample=1.0,
                             # ns_exponent=1.0
                             )
 result = model.accuracy('data/syntax.txt')

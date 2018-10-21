@@ -1,8 +1,10 @@
 import collections
 from collections import Counter
+from data_gen import *
 import numpy as np
 import random
 
+dg = DataGen()
 
 def get_data(name, max_words=-1):
     """Opens a corpus file and returns splited array of words sequence and thier the set of unique words in the corpus
@@ -148,6 +150,7 @@ def generate_batch_v3(batch_size, skip_window):
             ci = skip_window
         yield batch_inputs, batch_labels
 
+
 def generate_batch_v2(data, batch_size, skip_window):
     assert batch_size % skip_window == 0
     ci = skip_window  # current_index
@@ -169,7 +172,43 @@ def generate_batch_v2(data, batch_size, skip_window):
         yield batch_inputs, batch_labels
 
 
-def gather_word_freqs(split_text, subsampling = True, sampling_rate = 0.0001):
+def generate_batch_rnn_v2(data, int2word, batch_size, skip_window, n_chars, n_features):
+    assert batch_size % skip_window == 0
+    ci = skip_window  # current_index
+    while True:
+        batch_inputs = np.ndarray(shape=(batch_size), dtype=np.int32)
+        batch_labels = np.ndarray(shape=(batch_size), dtype=np.int32)
+        rnn_inputs = np.ndarray(
+            shape=(batch_size, n_chars, n_features), dtype=np.float32)
+        rnn_outputs = np.ndarray(
+            shape=(batch_size, n_chars, n_features), dtype=np.float32)
+        batch_index = 0
+        for batch_index in range(0, batch_size, skip_window * 2):  # fill the batch inputs
+            context = data[ci - skip_window:ci + skip_window + 1]
+            # remove the target from context words
+            target = context.pop(skip_window)
+            # context = random.sample(context, skip_window * 2)
+            batch_inputs[batch_index:batch_index +
+                         skip_window * 2] = context
+            batch_labels[batch_index:batch_index + skip_window * 2] = target
+            ci += 1
+
+        for rnn_i in range(batch_size):
+            a, b = batch_inputs[rnn_i], batch_labels[rnn_i]
+            context_word = '&' + int2word[a] + '&'
+            target_word = int2word[b] + '&'
+            context_vec = dg.word2vec2(context_word)
+            target_vec = dg.word2vec2(target_word)
+            rnn_inputs[rnn_i] = context_vec
+            rnn_outputs[rnn_i] = target_vec
+
+        if len(data) - ci - skip_window < batch_size:
+            ci = skip_window
+        batch_labels = batch_labels.reshape((-1, 1))
+        yield batch_inputs, batch_labels, rnn_inputs, rnn_outputs
+
+
+def gather_word_freqs(split_text, subsampling=True, sampling_rate=0.0001):
     vocab = {}
     ix_to_word = {}
     word_to_ix = {}
@@ -199,16 +238,13 @@ def gather_word_freqs(split_text, subsampling = True, sampling_rate = 0.0001):
         del split_text
     return words, vocab, word_to_ix, ix_to_word
 
+
 def subsampling(int_words, threshold=1e-5):
     word_counts = Counter(int_words)
     total_count = len(int_words)
-    freqs = {word: count/total_count for word, count in word_counts.items()}
-    p_drop = {word: 1 - np.sqrt(threshold/freqs[word]) for word in word_counts}
-    train_words = [word for word in int_words if random.random() < (1 - p_drop[word])]
+    freqs = {word: count / total_count for word, count in word_counts.items()}
+    p_drop = {
+        word: 1 - np.sqrt(threshold / freqs[word]) for word in word_counts}
+    train_words = [word for word in int_words if random.random()
+                   < (1 - p_drop[word])]
     return train_words
-
-# gen = generate_batch_v2(10, 2)
-# while True:
-#     x, y = next(gen)
-#     for a, b = zip(x, y):
-#         print()

@@ -1,31 +1,49 @@
 import tensorflow as tf
 import numpy as np
 import collections
-# from em_data_gen_v2 import *
 import time
-from word2vec import *
+from word2vec_rnn import *
 import os
 
 
-class Trainer:
+class Logger:
 
-    def __init__(self, train_name):
+    def __init__(self, multi_task=False):
+        self.nce_losses = []
+        if multi_task:
+            self.rnn_losses = []
+            self.rnn_acc = []
+
+    def log(self, result):
+        if type(result) == tuple:
+            self.nce_losses.append(result[0])
+            self.rnn_losses.append(result[1])
+            self.rnn_acc.append(result[2])
+        else:
+            self.nce_losses.append(result)
+
+    def get_log(self, multi_task=False):
+        if multi_task:
+            nce_loss = sum(self.nce_losses) / len(self.nce_losses)
+            rnn_loss = sum(self.rnn_losses) / len(self.nce_losses)
+            rnn_acc = sum(self.rnn_acc) / len(self.nce_losses)
+            log = "NCE Loss: {0:.2f} RNN Loss: {1:.2f} RNN Acc: {2:.2f}".format(
+                nce_loss, rnn_loss, rnn_acc)
+        else:
+            nce_loss = sum(self.nce_losses) / len(self.nce_losses)
+            log = "NCE Loss: {0:.2f}".format(nce_loss)
+        return log
+
+
+class RnnTrainer:
+
+    def __init__(self, train_name, batch_size=128, skip_window=1):
+        self.batch_size = batch_size
+        self.skip_window = skip_window
         self.train_name = train_name
         self.current_epoch = 0
         self._prepare_folder()
-        # self._prepare_data(max_words)
         self._prepare_last_model()
-
-    # def _prepare_data(self, max_words):
-    #     filename = "data/news.txt"
-    #     self.words, self.vocab = get_data(filename, max_words=max_words)
-    #     # words, self.word2freq, self.word2int, self.int2word = gather_word_freqs(self.words)
-    #     # self.data = [self.word2int[word] for word in words]
-    #     self.data, self.word2freq, self.word2int, self.int2word = build_dataset(
-    #         self.words)
-    #     self.data = subsampling(self.data)
-    #     self.vocab_size = len(self.vocab)
-    #     print("Words: {0} Vocab: {1}".format(len(self.words), self.vocab_size))
 
     def _prepare_folder(self):
         self.model_folder = './log/' + self.train_name
@@ -62,28 +80,34 @@ class Trainer:
                 self.current_epoch += 1
             else:
                 init.run()
-            
             for step in range(self.current_epoch, epoches):
-                average_loss = 0
                 start_time = time.time()
                 for s in range(steps_per_batch):
-                    batch_inputs, batch_labels = next(gen)
-                    average_loss += model.train_once(session,
-                                                     batch_inputs, batch_labels)
+                    batch_inputs, batch_labels, rnn_inputs, rnn_labels = next(
+                        gen)
+                    result = model.train_once(session,
+                                              batch_inputs, batch_labels,
+                                              rnn_inputs, rnn_labels)
+
                 self.save_model(session, self.model_folder, step, epoches)
-
-                elapsed_time = time.time() - start_time
-                elapsed_mins = elapsed_time / 60
-
-                average_loss /= steps_per_batch
+                elapsed_mins = (time.time() - start_time) / 60
                 ee = step + 1
-                log_text = "Progress: {0}/{1} {5:.2f}% Averlage loss: {2:.2f} Time: {3:.2f}/{4:.2f}".format(
+
+                log_text = "Progress: {0}/{1} {5:.2f}% Time: {3:.2f}/{4:.2f}".format(
                     ee, epoches, average_loss, elapsed_mins * ee, (elapsed_mins * epoches), (ee * 100 / epoches))
                 print(log_text)
-                average_loss = 0
 
     def save_model(self, session, folder, step, epoches):
         checkpoint_name = "{0}/model".format(folder)
         self.saver.save(session, checkpoint_name, global_step=step)
         checkpoint = "{0} {1} {2}\n".format(step, epoches, checkpoint_name)
         open(folder + "/record.txt", 'a').write(checkpoint)
+
+    def handler_log(self, result):
+        if type(result) == float:
+            nce_loss = result[0]
+            rnn_loss = result[1]
+            rnn_acc = result[2]
+            return log
+        else:
+            return "NCE Loss: {0:.2f}".format(result)
