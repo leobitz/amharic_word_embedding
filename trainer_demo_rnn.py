@@ -13,15 +13,15 @@ def remove_large_words(words, max_len):
     return new_list
 
 
-batch_size = 250
-embedding_size = 128
+batch_size = 120
+embedding_size = 32
 skip_window = 5
 char2int, int2char, char2tup, tup2char, n_consonant, n_vowel = build_charset()
 
 n_chars = 11 + 2
 n_features = len(char2int)
 
-words = read_file()
+words = read_file()[:1000]
 words = remove_large_words(words, n_chars)
 vocab, word2int, int2word = build_vocab(words)
 

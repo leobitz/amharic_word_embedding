@@ -93,8 +93,8 @@ class RnnTrainer:
                 elapsed_mins = (time.time() - start_time) / 60
                 ee = step + 1
 
-                log_text = "Progress: {0}/{1} {5:.2f}% Time: {3:.2f}/{4:.2f}".format(
-                    ee, epoches, average_loss, elapsed_mins * ee, (elapsed_mins * epoches), (ee * 100 / epoches))
+                log_text = "Progress: {0}/{1} {5:.2f}% Averlage loss: {2:.2f} Time: {3:.2f}/{4:.2f}".format(
+                    ee, epoches, result[0], elapsed_mins * ee, (elapsed_mins * epoches), (ee * 100 / epoches))
                 print(log_text)
 
     def save_model(self, session, folder, step, epoches):
