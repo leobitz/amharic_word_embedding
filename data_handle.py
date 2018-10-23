@@ -5,7 +5,7 @@ import random
 
 
 def read_file(filename='data/news.txt'):
-    return open(filename, encoding='utf8').read().split(' ')
+    return open(filename, encoding='utf8').read().strip().split(' ')
 
 
 def words_to_ints(word2int, words):
@@ -19,7 +19,6 @@ def get_frequency(words, word2int, int2word):
             word2freq[word] = 0
         word2freq[word] += 1.0
     return word2freq
-
 
 
 def build_vocab(words):
@@ -120,6 +119,39 @@ def generate_batch_embed(data, batch_size, skip_window):
         if len(data) - ci - skip_window < batch_size:
             ci = skip_window
         yield batch_inputs, batch_labels
+
+
+def generate_word_images(words, char2int, batch_size):
+    targets, target_inputs = [], []
+    for word in words:
+        target = word + '&'
+        target_input = '&' + target
+        targets.append(target)
+        target_inputs.append(target_input)
+    batch = 0
+    n_batchs = len(words) // batch_size
+    while True:
+        batch_targets = targets[batch:batch + batch_size]
+        batch_target_ins = target_inputs[batch:batch + batch_size]
+        batch_words = words[batch:batch + batch_size]
+        batch_inputs = []
+        batch_outputs = []
+        batch_raw_inputs = []
+        for i in range(batch_size):
+            target = word2vec(char2int, batch_targets[i], 13)
+            target_in = word2vec(char2int, batch_target_ins[i], 13)
+            word = word2vec(char2int, batch_words[i],  13)
+            batch_inputs.append(target)
+            batch_outputs.append(target_in)
+            batch_raw_inputs.append(word)
+        batch_inputs = np.stack(batch_inputs)#.reshape((batch_size, 13, 309, 1))
+        batch_outputs = np.stack(batch_outputs)#.reshape((batch_size, 13, 309, 1))
+        batch_raw_inputs = np.stack(batch_raw_inputs).reshape(
+            (batch_size, 13, 309, 1))
+        yield [batch_raw_inputs, batch_inputs], batch_outputs
+        batch += 1
+        if batch == n_batchs:
+            batch = 0
 
 
 def generate_batch_rnn_v2(data, int2word, char2int, batch_size, skip_window, n_chars, n_features):
