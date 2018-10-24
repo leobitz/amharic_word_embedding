@@ -17,7 +17,7 @@ class Tester:
             self.saver = tf.train.Saver()
         with tf.Session(graph=graph) as session:
             self.saver.restore(session, model_name)
-            embeds = model.get_embedding_v2(session)
+            embeds = model.get_embedding()
             self.embeddings = embeds
             gensim_model.set_embeddings(word2int, embeds)
             gensim_model.evaluate()

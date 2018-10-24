@@ -1,6 +1,15 @@
 import numpy as np
 import tensorflow as tf
 from tensorflow.python.ops import candidate_sampling_ops
+import time
+
+
+def RNN(x, timesteps, units, initial_state):
+    x = tf.unstack(x, timesteps, 1)
+    grucell = tf.contrib.rnn.GRUCell(num_units=units)
+    outputs, states = tf.nn.static_rnn(
+        grucell, x, dtype=tf.float32, initial_state=initial_state)
+    return outputs, states
 
 
 class Word2Vec2:
@@ -71,12 +80,14 @@ class Word2Vec2:
                         stddev=1.0 / np.sqrt(self.embedding_size)))
                 rnn_b = tf.Variable(tf.zeros([self.n_features]))
                 initial_state = self.embed
-                rnn = tf.contrib.rnn.GRUCell(num_units=self.embedding_size)
-                rnn_outputs, state = tf.nn.dynamic_rnn(cell=rnn,
-                                                       inputs=self.rnn_inputs,
-                                                       initial_state=initial_state,
-                                                       time_major=False,
-                                                       dtype=tf.float32)
+                # rnn = tf.contrib.rnn.GRUCell(num_units=self.embedding_size)
+                rnn_outputs, state = RNN(
+                    self.rnn_inputs, self.n_chars, self.embedding_size, initial_state)
+                # rnn_outputs, state = tf.nn.dynamic_rnn(cell=rnn,
+                #                                        inputs=self.rnn_inputs,
+                #                                        initial_state=initial_state,
+                #                                        time_major=False,
+                #                                        dtype=tf.float32)
         with tf.name_scope('rnn_loss'):
             flatOutputs = tf.reshape(
                 rnn_outputs, [-1, self.embedding_size])
@@ -91,7 +102,7 @@ class Word2Vec2:
             y = tf.argmax(tf.nn.softmax(logits), 1)
             y = tf.reshape(y, [self.batch_size, -1])
 
-            self.rnn_train_step = tf.train.AdamOptimizer(.001).minimize(
+            self.rnn_train_step = tf.train.AdamOptimizer(.01).minimize(
                 loss)
 
             correct_pred = tf.equal(
@@ -124,7 +135,8 @@ class Word2Vec2:
 
     def _create_optimizer(self):
         with tf.name_scope('optimizer'):
-            self.optimizer = tf.train.GradientDescentOptimizer(.1).minimize(self.nce_loss)
+            self.optimizer = tf.train.GradientDescentOptimizer(.1).minimize(
+                self.nce_loss)
 
     def _create_final_embedding(self):
         norms = tf.sqrt(tf.reduce_sum(
@@ -139,7 +151,6 @@ class Word2Vec2:
         # final_embeddings = self.embeddings.eval()
         return final_embeddings
 
-
     def train_once(self, session, batch_inputs, batch_labels,
                    rnn_inputs, rnn_outputs):
         feed_dict = {self.train_inputs: batch_inputs,
@@ -147,9 +158,21 @@ class Word2Vec2:
                      self.rnn_inputs: rnn_inputs,
                      self.rnn_targets: rnn_outputs}
 
-        nce_loss_val, _, rnn_loss, rnn_acc, _ = session.run(
-            [self.nce_loss, self.optimizer,
-             self.rnn_loss, self.rnn_accuracy,
-             self.rnn_train_step],
+        em_time = time.time()
+        rnn_loss, rnn_acc = 0, 0
+        nce_loss_val, _ = session.run(
+            [self.nce_loss, self.optimizer],
             feed_dict=feed_dict)
-        return nce_loss_val, rnn_loss, rnn_acc
+
+        em_time = time.time() - em_time
+        rnn_time = time.time()
+
+        if np.random.rand() > .5:
+            rnn_loss, rnn_acc, _ = session.run(
+                [self.rnn_loss, self.rnn_accuracy,
+                 self.rnn_train_step],
+                feed_dict=feed_dict)
+
+        rnn_time = time.time() - rnn_time
+
+        return nce_loss_val, rnn_loss, rnn_acc, em_time, rnn_time

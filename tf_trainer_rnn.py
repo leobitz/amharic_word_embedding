@@ -82,12 +82,42 @@ class RnnTrainer:
                 init.run()
             for step in range(self.current_epoch, epoches):
                 start_time = time.time()
+                timing = 0
+                times = []
+                time_of_s = time.time()
+                em_time = 0
+                rnn_time = 0
+                eloss, rloss, racc = [], [], []
                 for s in range(steps_per_batch):
+                    # data_start_time = time.time()
                     batch_inputs, batch_labels, rnn_inputs, rnn_labels = next(
                         gen)
+                    # data_end_time = time.time() - data_start_time
+                    # run_start = time.time()
                     result = model.train_once(session,
                                               batch_inputs, batch_labels,
                                               rnn_inputs, rnn_labels)
+                    eloss.append(result[0])
+                    rloss.append(result[1])
+                    racc.append(result[2])
+                    # run_end = time.time() - run_start
+                    # times.append([data_end_time, run_end])
+                    # timing += 1
+                    # em_time += result[-2]
+                    # rnn_time += result[-1]
+                    # if timing == 1000:
+                    #     timing = 0
+                    #     times = np.array(times)
+                    #     times_ave = times.sum(axis=0)
+                    #     times = []
+                    #     print(times_ave)
+                    if s % 1000 == 0:
+                        # time_of_s = (time.time() - time_of_s)
+                        print("{0}/{1} {2:.2f} {3:.2f} {4:.2f}".format(s,
+                                                                       steps_per_batch, np.mean(eloss), np.mean(rloss), np.mean(racc)))
+                        # time_of_s = time.time()
+                        # em_time = 0
+                        # rnn_time = 0
 
                 self.save_model(session, self.model_folder, step, epoches)
                 elapsed_mins = (time.time() - start_time) / 60

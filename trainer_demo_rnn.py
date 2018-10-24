@@ -13,15 +13,15 @@ def remove_large_words(words, max_len):
     return new_list
 
 
-batch_size = 120
-embedding_size = 32
+batch_size = 500
+embedding_size = 128
 skip_window = 5
 char2int, int2char, char2tup, tup2char, n_consonant, n_vowel = build_charset()
 
 n_chars = 11 + 2
 n_features = len(char2int)
 
-words = read_file()[:1000]
+words = read_file()  # [:1000]
 words = remove_large_words(words, n_chars)
 vocab, word2int, int2word = build_vocab(words)
 
@@ -33,7 +33,8 @@ steps_per_batch = len(words) // batch_size
 
 int_words = words_to_ints(word2int, words)
 print("Final train data: {0}".format(len(words)))
-gen = generate_batch_rnn_v2(int_words, int2word, char2int, batch_size, skip_window, n_chars,n_features)
+gen = generate_batch_rnn_v2(
+    int_words, int2word, char2int, batch_size, skip_window, n_chars, n_features)
 
 
 graph = tf.Graph()
@@ -49,5 +50,4 @@ trainer = RnnTrainer(train_name="full_200",
                      batch_size=batch_size,
                      skip_window=skip_window)
 
-trainer.train(graph, model, gen,steps_per_batch, embedding_size, epoches=40)
-
+trainer.train(graph, model, gen, steps_per_batch, embedding_size, epoches=10)
