@@ -27,7 +27,7 @@ model = gensim.models.Word2Vec(sentenses,
                             )
 result = model.accuracy('data/syntax.txt')
 result = model.accuracy('data/semantic.txt')
-
+print(result[0]['correct'])
 # model1 = gensim.models.Word2Vec(sentenses, size=128, iter=0, min_count=1,)
 # model.wv.init_sims()
 # model1.wv.init_sims()
@@ -37,4 +37,26 @@ result = model.accuracy('data/semantic.txt')
 
 # result = model.accuracy('data/syntax.txt')
 # result = model.accuracy('data/semantic.txt')
+# print(result)
+# params = {
+#     "embed_size": [100, 125, 150, 175, 200, 225, 250, 275],
+#     "sample": np.linspace(0.01, 0.0001, 10),
+#     "window": [1, 3, 5, 7, 9, 11],
+#     "sg": [0, 1],
+#     "negative": [5, 15, 25, 35, 45, 55, 65, 75, 85],
+#     "cbow_mean": [0, 1],
+# }
+
+# grid = 1
+# random = {}
+# for key in params:
+#     val = params[key]
+#     if len(val)  < 3:
+#         random[key] = val
+#     else:
+#         random[key] = np.random.choice(val, min(len(val), 3), replace=False)
+#     print(random[key])
+
+
+
 

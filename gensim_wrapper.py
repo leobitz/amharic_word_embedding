@@ -3,13 +3,12 @@ import logging
 import collections
 
 
-
 class GensimWrapper:
 
     def __init__(self, embed_size=128, iter=5, log=False):
         if log:
             logging.basicConfig(
-                    format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
+                format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
         self.embed_size = embed_size
         self.iter = iter
         self._prepare_data()
@@ -41,12 +40,16 @@ class GensimWrapper:
     def evaluate_synatctic_analogy(self):
         result = self.model.accuracy('data/syntax.txt')
         return result
-    
+
     def evaluate(self):
         anomaly = self.evaluate_anomaly()
-        semantic = self.evaluate_semantic_analogy()
-        syntactic = self.evaluate_synatctic_analogy()
-        print(anomaly)
+        semantic = self.evaluate_semantic_analogy()[0]
+        syntactic = self.evaluate_synatctic_analogy()[0]
+        semantic = len(semantic['correct']) * 100 / (len(semantic['correct']) + len(semantic['incorrect']))
+        syntactic = len(syntactic['correct']) * 100 / (len(syntactic['correct']) + len(syntactic['incorrect']))
+        evaluation = {"anomaly": anomaly,
+                      "semantic": semantic, "syntactic": syntactic}
+        return evaluation
 
     def set_embeddings(self, word2int, embeddings):
         """Transfers the word embedding learned bu tensorflow to gensim model

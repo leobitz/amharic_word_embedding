@@ -21,6 +21,22 @@ def get_frequency(words, word2int, int2word):
     return word2freq
 
 
+def ns_sample(word2freq, word2int, int2word, rate):
+    unigrams = np.array([word2freq[int2word[i]]
+                         for i in range(len(word2freq))])
+    unigrams = np.power(unigrams, rate)
+    unigrams = unigrams / np.sum(unigrams)
+    unigrams = unigrams / np.min(unigrams)
+    unigrams = np.round(unigrams).astype(np.int32)
+    final = []
+    for i in range(len(word2freq)):
+        word = int2word[i]
+        word_int = word2int[word]
+        for j in range(unigrams[i]):
+            final.append(word_int)
+    return final
+
+
 def build_vocab(words):
     word2int = {}
     int2word = {}
@@ -144,8 +160,10 @@ def generate_word_images(words, char2int, batch_size):
             batch_inputs.append(target)
             batch_outputs.append(target_in)
             batch_raw_inputs.append(word)
-        batch_inputs = np.stack(batch_inputs)#.reshape((batch_size, 13, 309, 1))
-        batch_outputs = np.stack(batch_outputs)#.reshape((batch_size, 13, 309, 1))
+        # .reshape((batch_size, 13, 309, 1))
+        batch_inputs = np.stack(batch_inputs)
+        # .reshape((batch_size, 13, 309, 1))
+        batch_outputs = np.stack(batch_outputs)
         batch_raw_inputs = np.stack(batch_raw_inputs).reshape(
             (batch_size, 13, 309, 1))
         yield [batch_raw_inputs, batch_inputs], batch_outputs
