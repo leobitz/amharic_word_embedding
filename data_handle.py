@@ -137,6 +137,93 @@ def generate_batch_embed(data, batch_size, skip_window):
         yield batch_inputs, batch_labels
 
 
+def get_context_words(words, start, length):
+    if start + length > len(words):
+        start = 0
+    end = start + length
+    return words[start:end], start + 1
+
+
+def generate_batch_image_v2(words, word2int, char2int, batch_size, skip_window):
+    assert batch_size % (skip_window * 2) == 0
+    ci = 0
+    window = skip_window * 2 + 1
+    targets, target_inputs = {}, {}
+    for word in word2int.keys():
+        target = word + '&'
+        target_input = '&' + target
+        targets[word] = target
+        target_inputs[word] = target_input
+    while True:
+        batch_inputs = np.ndarray(
+            shape=(batch_size, 13, 309), dtype=np.float32)
+        batch_outputs = np.ndarray(
+            shape=(batch_size, 13, 309), dtype=np.float32)
+        batch_raw_inputs = np.ndarray(
+            shape=(batch_size, 13, 309, 1), dtype=np.float32)
+        batch_index = 0
+        for batch_index in range(0, batch_size, skip_window * 2):  # fill the batch inputs
+            context, ci = get_context_words(words, ci, window)
+            target_word = context.pop(skip_window)
+            # .reshape((13, 309, 1))
+            target_vec = word2vec(char2int, targets[target_word], 13)
+            target_input_vec = word2vec(
+                char2int, target_inputs[target_word], 13)  # .reshape((13, 309, 1))
+            for i in range(len(context)):
+                batch_inputs[i + batch_index] = target_input_vec
+                batch_outputs[i + batch_index] = target_vec
+                batch_raw_inputs[i +
+                                 batch_index] = word2vec(char2int, context[i], 13).reshape((13, 309, 1))
+
+        yield [batch_raw_inputs, batch_inputs], batch_outputs
+
+
+def generate_batch_image_v3(words, word2int, char2int, batch_size, skip_window):
+    assert batch_size % (skip_window * 2) == 0
+    ci = 0
+    window = skip_window * 2 + 1
+    targets, target_inputs = {}, {}
+    for word in word2int.keys():
+        target = word + '&'
+        target_input = '&' + target
+        targets[word] = target
+        target_inputs[word] = target_input
+    while True:
+        batch_inputs = np.ndarray(
+            shape=(batch_size, 13, 309), dtype=np.float32)
+        batch_outputs = np.ndarray(
+            shape=(batch_size, 13, 309), dtype=np.float32)
+        batch_raw_inputs = np.ndarray(
+            shape=(batch_size, 13, 309, 1), dtype=np.float32)
+        batch_index = 0
+        for batch_index in range(0, batch_size, skip_window * 2):  # fill the batch inputs
+            context, ci = get_context_words(words, ci, window)
+            target_word = context.pop(skip_window)
+            target_vec = word2vec(char2int, target_word,
+                                  13).reshape((13, 309, 1))
+            for i in range(len(context)):
+                batch_inputs[i + batch_index] = word2vec(
+                    char2int, target_inputs[context[i]], 13)
+                batch_outputs[i +
+                              batch_index] = word2vec(char2int, targets[context[i]], 13)
+                batch_raw_inputs[i + batch_index] = target_vec
+
+        yield [batch_raw_inputs, batch_inputs], batch_outputs
+
+# words = read_file()
+# vocab, word2int, int2word = build_vocab(words)
+# word2freq = get_frequency(words, word2int, int2word)
+# char2int, int2char, char2tup, tup2char, n_consonant, n_vowel = build_charset()
+# ns_unigrams = ns_sample(word2freq, word2int, int2word, .75)
+# n_chars = 11 + 2
+# n_features = len(char2int)
+# batch_size = 128
+# embed_size = 128
+
+# gen = generate_batch_image_v2(words, word2int, char2int, 12, 2)
+# next(gen)
+
+
 def generate_word_images(words, char2int, batch_size):
     targets, target_inputs = [], []
     for word in words:
