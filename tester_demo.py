@@ -27,7 +27,7 @@ steps_per_batch = len(words) // batch_size
 
 int_words = words_to_ints(word2int, words)
 print("Final train data: {0}".format(len(words)))
-model_name = "log/full_200/model-14"
+model_name = "log/full_200/model-5"
 name = "test"
 tester = Tester()
 gensim_model = GensimWrapper(embedding_size, 0, log=True)
@@ -53,7 +53,9 @@ with graph.as_default():
 
 result = tester.evaluate(graph, model, gensim_model, word2int,
                 model_name)
-utils = Utils(word2int, tester.embeddings)
-print(utils.sorted_sim('አቶ'))
-print(utils.sorted_sim('ነው'))
-print(utils.sorted_sim('ኢትዮጵያ'))
+utils = Utils(word2int, int2word, tester.embeddings)
+result = utils.evaluate_word_analogy("data/semantic.txt")
+print(result)
+# print(utils.sorted_sim('አቶ'))
+# print(utils.sorted_sim('ነው'))
+# print(utils.sorted_sim('ኢትዮጵያ'))

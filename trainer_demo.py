@@ -4,11 +4,12 @@ from data_handle import *
 import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
-batch_size = 500
+batch_size = 120
 embedding_size = 128
 skip_window = 4
 
 words = read_file()
+# words = subsampling(words, threshold=1e-3)
 vocab, word2int, int2word = build_vocab(words)
 word2freq = get_frequency(words, word2int, int2word)
 unigrams = [word2freq[int2word[i]] for i in range(len(word2int))]
