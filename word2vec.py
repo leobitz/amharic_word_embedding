@@ -29,7 +29,7 @@ class Word2Vec:
                 tf.int32, shape=[self.batch_size, 1])
 
     def _create_embedding(self):
-        with tf.device('/CPU:0'):
+        with tf.device('/GPU:0'):
             # Look up embeddings for inputs.
             with tf.name_scope('embeddings_layer'):
                 init_width = 0.5 / self.embedding_size
@@ -70,9 +70,7 @@ class Word2Vec:
 
     def _create_optimizer(self):
         with tf.name_scope('optimizer'):
-            self.optimizer = tf.train.MomentumOptimizer(learning_rate=.1,
-                                                        momentum=0.9,
-                                                        use_nesterov=True).minimize(self.loss)
+            self.optimizer = tf.train.GradientDescentOptimizer(learning_rate=1.0).minimize(self.loss)
 
     def _create_final_embedding(self):
         norms = tf.sqrt(tf.reduce_sum(
@@ -80,12 +78,13 @@ class Word2Vec:
         self.normalized_embeddings = self.embeddings / norms
 
     def get_embedding(self):
-        norms = tf.sqrt(tf.reduce_sum(
-            tf.square(self.embeddings), 1, keepdims=True))
-        normalized_embeddings = self.embeddings / norms
-        final_embeddings = normalized_embeddings.eval()
+        # norms = tf.sqrt(tf.reduce_sum(
+        #     tf.square(self.embeddings), 1, keepdims=True))
+        # normalized_embeddings = self.embeddings / norms
+        final_embeddings = self.embeddings.eval()
+        norms = np.linalg.norm(final_embeddings, axis=1, keepdims=True)
         # final_embeddings = self.embeddings.eval()
-        return final_embeddings
+        return final_embeddings/norms
 
     def get_embedding_v2(self, sess):
         embeds = sess.run(self.normalized_embeddings)

@@ -27,7 +27,7 @@ steps_per_batch = len(words) // batch_size
 
 int_words = words_to_ints(word2int, words)
 print("Final train data: {0}".format(len(words)))
-model_name = "log/full_200/model-1"
+model_name = "log/full_200/model-14"
 name = "test"
 tester = Tester()
 gensim_model = GensimWrapper(embedding_size, 0, log=True)
@@ -38,17 +38,21 @@ gensim_model = GensimWrapper(embedding_size, 0, log=True)
     #                      unigrams=unigrams)
 graph = tf.Graph()
 with graph.as_default():
-    model = Word2Vec2(vocab_size=vocab_size,
-                      n_chars=n_chars,
-                      n_features=n_features,
-                      embed_size=embedding_size,
-                      num_sampled=5,
-                      batch_size=batch_size,
-                      unigrams=unigrams)
+    model = Word2Vec(vocab_size=vocab_size,
+                         embed_size=embedding_size,
+                         num_sampled=5,
+                         batch_size=batch_size,
+                         unigrams=unigrams)
+    # model = Word2Vec2(vocab_size=vocab_size,
+    #                   n_chars=n_chars,
+    #                   n_features=n_features,
+    #                   embed_size=embedding_size,
+    #                   num_sampled=5,
+    #                   batch_size=batch_size,
+    #                   unigrams=unigrams)
 
-tester.evaluate(graph, model, gensim_model, word2int,
+result = tester.evaluate(graph, model, gensim_model, word2int,
                 model_name)
-
 utils = Utils(word2int, tester.embeddings)
 print(utils.sorted_sim('አቶ'))
 print(utils.sorted_sim('ነው'))

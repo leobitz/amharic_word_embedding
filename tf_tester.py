@@ -20,7 +20,8 @@ class Tester:
             embeds = model.get_embedding()
             self.embeddings = embeds
             gensim_model.set_embeddings(word2int, embeds)
-            gensim_model.evaluate()
+            result = gensim_model.evaluate()
+            print(result)
 
     def evaluatev2(self, gensim_model, embeddings):
         self.embeddings = embeddings

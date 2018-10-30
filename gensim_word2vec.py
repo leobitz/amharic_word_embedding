@@ -19,15 +19,16 @@ def anomaly(model):
 sentenses = open('data/news.txt', encoding='utf-8').read().split('*')
 sentenses = [s.strip().split() for s in sentenses]
 model = gensim.models.Word2Vec(sentenses, 
-                            size=200, 
-                            iter=0, 
-                            min_count=1, 
-                            sample=1.0,
-                            # ns_exponent=1.0
+                            size=128, 
+                            iter=20, 
+                            min_count=1,
+                            window=2,
+                            sg=1,
+                            negative=50
                             )
 result = model.accuracy('data/syntax.txt')
 result = model.accuracy('data/semantic.txt')
-print(result[0]['correct'])
+print("{0:.2f}".format(anomaly(model)))
 # model1 = gensim.models.Word2Vec(sentenses, size=128, iter=0, min_count=1,)
 # model.wv.init_sims()
 # model1.wv.init_sims()

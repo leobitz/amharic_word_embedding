@@ -123,14 +123,15 @@ def generate_batch_embed(data, batch_size, skip_window):
         batch_inputs = np.ndarray(shape=(batch_size), dtype=np.int32)
         batch_labels = np.ndarray(shape=(batch_size, 1), dtype=np.int32)
         batch_index = 0
-        for batch_index in range(0, batch_size, skip_window * 2):  # fill the batch inputs
+        for batch_index in range(0, batch_size, skip_window):  # fill the batch inputs
             context = data[ci - skip_window:ci + skip_window + 1]
             # remove the target from context words
             target = context.pop(skip_window)
             # context = random.sample(context, skip_window * 2)
+            context = np.random.choice(context, skip_window, replace=False)
             batch_inputs[batch_index:batch_index +
-                         skip_window * 2] = context
-            batch_labels[batch_index:batch_index + skip_window * 2, 0] = target
+                         skip_window] = context
+            batch_labels[batch_index:batch_index + skip_window, 0] = target
             ci += 1
         if len(data) - ci - skip_window < batch_size:
             ci = skip_window
