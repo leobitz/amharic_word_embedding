@@ -1,3 +1,13 @@
+import os
+import numpy as np
+import tensorflow as tf
+import random
+
+tf.set_random_seed(1000)
+np.random.seed(1000)
+random.seed(1000)
+
+from word2vec_reg import Word2VecReg
 from tf_tester import Tester
 from tf_trainer import *
 from word2vec import *
@@ -5,8 +15,9 @@ from word2vec_rnn import *
 from gensim_wrapper import *
 from data_handle import *
 from utils import Utils
-import os
+
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+
 
 batch_size = 500
 embedding_size = 128
@@ -27,35 +38,40 @@ steps_per_batch = len(words) // batch_size
 
 int_words = words_to_ints(word2int, words)
 print("Final train data: {0}".format(len(words)))
-model_name = "log/full_200/model-5"
+
 name = "test"
-tester = Tester()
-gensim_model = GensimWrapper(embedding_size, 0, log=True)
-    # w2v_model = Word2Vec(vocab_size=vocab_size,
+model_name = "log/{0}/model-15".format(name)
+
+gensim_model = GensimWrapper(embedding_size, 0, log=False)
+
+graph = tf.Graph()
+with graph.as_default():
+    # model = Word2Vec(vocab_size=vocab_size,
+    #                    embed_size=embedding_size,
+    #                    num_sampled=5,
+    #                    batch_size=batch_size,
+    #                    unigrams=unigrams)
+    # rnn_model = Word2Vec2(vocab_size=vocab_size,
+    #                      n_chars=n_chars,
+    #                      n_features=n_features,
     #                      embed_size=embedding_size,
     #                      num_sampled=5,
     #                      batch_size=batch_size,
     #                      unigrams=unigrams)
-graph = tf.Graph()
-with graph.as_default():
-    model = Word2Vec(vocab_size=vocab_size,
-                         embed_size=embedding_size,
-                         num_sampled=5,
-                         batch_size=batch_size,
-                         unigrams=unigrams)
-    # model = Word2Vec2(vocab_size=vocab_size,
-    #                   n_chars=n_chars,
-    #                   n_features=n_features,
-    #                   embed_size=embedding_size,
-    #                   num_sampled=5,
-    #                   batch_size=batch_size,
-    #                   unigrams=unigrams)
+    model = Word2VecReg(vocab_size=vocab_size,
+                        embed_size=embedding_size,
+                        num_sampled=5,
+                        batch_size=batch_size,
+                        unigrams=unigrams)
+tester = Tester(graph, word2int, model, model_name)
+embeddings = tester.embeddings
+embeddings = tester.normalize(tester.embeddings)
 
-result = tester.evaluate(graph, model, gensim_model, word2int,
-                model_name)
-utils = Utils(word2int, int2word, tester.embeddings)
-result = utils.evaluate_word_analogy("data/semantic.txt")
+result = tester.evaluate_v2(gensim_model, embeddings)
+utils = Utils(word2int, int2word, embeddings)
+# utils.evaluate_word_analogy("data/semantic.txt")
+# result = utils.evaluate_word_analogy("data/semantic.txt")
 print(result)
-# print(utils.sorted_sim('አቶ'))
-# print(utils.sorted_sim('ነው'))
-# print(utils.sorted_sim('ኢትዮጵያ'))
+print(utils.sorted_sim('አቶ'))
+print(utils.sorted_sim('ነው'))
+print(utils.sorted_sim('ኢትዮጵያ'))

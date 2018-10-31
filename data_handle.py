@@ -138,6 +138,31 @@ def generate_batch_embed(data, batch_size, skip_window):
         yield batch_inputs, batch_labels
 
 
+def generate_batch_embed_v2(data, embeddings, batch_size, skip_window):
+    assert batch_size % skip_window == 0
+    ci = skip_window  # current_index
+    while True:
+        batch_inputs = np.ndarray(shape=(batch_size), dtype=np.int32)
+        batch_labels = np.ndarray(shape=(batch_size, 1), dtype=np.int32)
+        batch_embeddings = np.ndarray(shape=(batch_size, embeddings.shape[1]), dtype=np.int32)
+        batch_index = 0
+        for batch_index in range(0, batch_size, skip_window):  # fill the batch inputs
+            context = data[ci - skip_window:ci + skip_window + 1]
+            # remove the target from context words
+            target = context.pop(skip_window)
+            # context = random.sample(context, skip_window * 2)
+            context = np.random.choice(context, skip_window, replace=False)
+            batch_embeddings[batch_index:batch_index +
+                             skip_window] = embeddings[context]
+            batch_inputs[batch_index:batch_index +
+                         skip_window] = context
+            batch_labels[batch_index:batch_index + skip_window, 0] = target
+            ci += 1
+        if len(data) - ci - skip_window < batch_size:
+            ci = skip_window
+        yield batch_inputs, batch_labels, batch_embeddings
+
+
 def get_context_words(words, start, length):
     if start + length > len(words):
         start = 0
@@ -261,7 +286,7 @@ def generate_word_images(words, char2int, batch_size):
 
 
 def generate_batch_rnn_v2(data, int2word, char2int, batch_size, skip_window, n_chars, n_features):
-    assert batch_size % skip_window == 0
+    assert batch_size % (skip_window * 2) == 0
     ci = skip_window  # current_index
     while True:
         batch_inputs = np.ndarray(shape=(batch_size), dtype=np.int32)

@@ -102,8 +102,7 @@ class Word2Vec2:
             y = tf.argmax(tf.nn.softmax(logits), 1)
             y = tf.reshape(y, [self.batch_size, -1])
 
-            self.rnn_train_step = tf.train.AdamOptimizer(.01).minimize(
-                loss)
+            self.rnn_train_step = tf.train.GradientDescentOptimizer(.1).minimize(loss)
 
             correct_pred = tf.equal(
                 tf.argmax(logits, 1), tf.argmax(rnn_targets, 1))
@@ -135,7 +134,7 @@ class Word2Vec2:
 
     def _create_optimizer(self):
         with tf.name_scope('optimizer'):
-            self.optimizer = tf.train.GradientDescentOptimizer(.1).minimize(
+            self.optimizer = tf.train.GradientDescentOptimizer(1.0).minimize(
                 self.nce_loss)
 
     def _create_final_embedding(self):
@@ -144,35 +143,33 @@ class Word2Vec2:
         self.normalized_embeddings = self.embeddings / norms
 
     def get_embedding(self):
-        norms = tf.sqrt(tf.reduce_sum(
-            tf.square(self.embeddings), 1, keepdims=True))
-        normalized_embeddings = self.embeddings / norms
-        final_embeddings = normalized_embeddings.eval()
+        # norms = tf.sqrt(tf.reduce_sum(
+        #     tf.square(self.embeddings), 1, keepdims=True))
+        # normalized_embeddings = self.embeddings / norms
+        # final_embeddings = normalized_embeddings.eval()
         # final_embeddings = self.embeddings.eval()
-        return final_embeddings
+        return self.embeddings.eval()
 
-    def train_once(self, session, batch_inputs, batch_labels,
-                   rnn_inputs, rnn_outputs):
+    def train_once(self, session, batch_data):
+
+        batch_inputs, batch_labels, rnn_inputs, rnn_outputs = batch_data
         feed_dict = {self.train_inputs: batch_inputs,
                      self.train_labels: batch_labels,
                      self.rnn_inputs: rnn_inputs,
                      self.rnn_targets: rnn_outputs}
 
-        em_time = time.time()
-        rnn_loss, rnn_acc = 0, 0
         nce_loss_val, _ = session.run(
             [self.nce_loss, self.optimizer],
             feed_dict=feed_dict)
 
-        em_time = time.time() - em_time
-        rnn_time = time.time()
-
-        if np.random.rand() > .5:
-            rnn_loss, rnn_acc, _ = session.run(
-                [self.rnn_loss, self.rnn_accuracy,
-                 self.rnn_train_step],
-                feed_dict=feed_dict)
-
-        rnn_time = time.time() - rnn_time
-
-        return nce_loss_val, rnn_loss, rnn_acc, em_time, rnn_time
+        rnn_loss, rnn_acc = 0, 0
+        rnn_loss, rnn_acc, _ = session.run(
+            [self.rnn_loss, self.rnn_accuracy,
+                self.rnn_train_step],
+            feed_dict=feed_dict)
+        result = {
+            "em_loss": nce_loss_val,
+            "rnn_loss": rnn_loss,
+            "rnn_acc": rnn_acc
+        }
+        return result

@@ -8,22 +8,27 @@ import os
 
 class Tester:
 
-    def __init__(self):
-        self.embeddings = None
+    def __init__(self, graph, word2int, model=None, model_name=None):
+        self.word2int = word2int
+        if model is not None:
+            with graph.as_default():
+                saver = tf.train.Saver()
+            with tf.Session(graph=graph) as session:
+                saver.restore(session, model_name)
+                embeds = model.get_embedding()
+                self.embeddings = embeds
 
+    def evaluate(self, gensim_model):
+        gensim_model.set_embeddings(self.word2int, self.embeddings)
+        result = gensim_model.evaluate()
+        return result
 
-    def evaluate(self, graph, model, gensim_model, word2int, model_name):
-        with graph.as_default():
-            self.saver = tf.train.Saver()
-        with tf.Session(graph=graph) as session:
-            self.saver.restore(session, model_name)
-            embeds = model.get_embedding()
-            self.embeddings = embeds
-            gensim_model.set_embeddings(word2int, embeds)
-            result = gensim_model.evaluate()
-            print(result)
+    def normalize(self, embeddings):
+        norms = np.linalg.norm(embeddings, axis=1, keepdims=True)
+        return embeddings / norms
 
-    def evaluatev2(self, gensim_model, embeddings):
+    def evaluate_v2(self, gensim_model, embeddings):
         self.embeddings = embeddings
         gensim_model.set_embeddings(self.word2int, self.embeddings)
-        gensim_model.evaluate()
+        result = gensim_model.evaluate()
+        return result

@@ -40,8 +40,7 @@ class Utils:
         return sorted(sim_with_word, key=lambda t: t[1], reverse=True)[:10]
 
     def closest_analogy(self, word2int, M, v1, v2, v3):
-        v = v1 - v2 + v3
-        v = v / norm(v)
+        v = self.normalize(v1 - v2 + v3)
         sims = self.similarity(M, v)
         return self.sort_by_similarity(word2int, sims)
 
@@ -55,8 +54,7 @@ class Utils:
         v1 = self.embedding[self.word2int[words[0]]]
         v2 = self.embedding[self.word2int[words[1]]]
         v3 = self.embedding[self.word2int[words[2]]]
-        v = v1 - v2 + v3
-        v = v / norm(v)
+        v = self.normalize(v1 - v2 + v3)
         return self.search_for(self.int2word, self.embedding, v)
     
     def evaluate_word_analogy(self, file):
@@ -68,7 +66,11 @@ class Utils:
                 continue
             words = line[:-1].split(' ')
             result = self.solve_single(words)
+            print(words, result)
             if words[-1] == result:
                 correct += 1
             total += 1
-        return correct / total
+        return correct * 100 / total
+
+    def normalize(self, v):
+        return v / norm(v)

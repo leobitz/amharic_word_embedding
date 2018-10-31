@@ -13,19 +13,7 @@ class Trainer:
         self.train_name = train_name
         self.current_epoch = 0
         self._prepare_folder()
-        # self._prepare_data(max_words)
         self._prepare_last_model()
-
-    # def _prepare_data(self, max_words):
-    #     filename = "data/news.txt"
-    #     self.words, self.vocab = get_data(filename, max_words=max_words)
-    #     # words, self.word2freq, self.word2int, self.int2word = gather_word_freqs(self.words)
-    #     # self.data = [self.word2int[word] for word in words]
-    #     self.data, self.word2freq, self.word2int, self.int2word = build_dataset(
-    #         self.words)
-    #     self.data = subsampling(self.data)
-    #     self.vocab_size = len(self.vocab)
-    #     print("Words: {0} Vocab: {1}".format(len(self.words), self.vocab_size))
 
     def _prepare_folder(self):
         self.model_folder = './log/' + self.train_name
@@ -62,28 +50,53 @@ class Trainer:
                 self.current_epoch += 1
             else:
                 init.run()
-            
+            training_meta = {}
             for step in range(self.current_epoch, epoches):
-                average_loss = 0
-                start_time = time.time()
+
                 for s in range(steps_per_batch):
-                    batch_inputs, batch_labels = next(gen)
-                    average_loss += model.train_once(session,
-                                                     batch_inputs, batch_labels)
+                    start_time = time.time()
+                    batch_data = next(gen)
+                    result = model.train_once(session, batch_data)
+                    result['time_taken'] = (time.time() - start_time) 
+                    self.logger(training_meta, result)
+
                 self.save_model(session, self.model_folder, step, epoches)
-
-                elapsed_time = time.time() - start_time
-                elapsed_mins = elapsed_time / 60
-
-                average_loss /= steps_per_batch
-                ee = step + 1
-                log_text = "Progress: {0}/{1} {5:.2f}% Averlage loss: {2:.2f} Time: {3:.2f}/{4:.2f}".format(
-                    ee, epoches, average_loss, elapsed_mins * ee, (elapsed_mins * epoches), (ee * 100 / epoches))
-                print(log_text)
-                average_loss = 0
+                log, time_log = self.get_log_text(
+                    training_meta, step, epoches, steps_per_batch)
+                print(time_log, log)
+        
 
     def save_model(self, session, folder, step, epoches):
         checkpoint_name = "{0}/model".format(folder)
         self.saver.save(session, checkpoint_name, global_step=step)
         checkpoint = "{0} {1} {2}\n".format(step, epoches, checkpoint_name)
         open(folder + "/record.txt", 'a').write(checkpoint)
+
+    def logger(self, meta: dict, result: dict):
+        for res in result.keys():
+            if res not in meta:
+                meta[res] = []
+            meta[res] += [result[res]]
+
+    def get_log_text(self, meta: dict, step, total_step, steps_per_batch):
+        log = ""
+        for key in meta:
+            if key == "time_taken":
+                continue
+            log += "{1}: {0:.3f} ".format(np.mean(meta[key]), key)
+
+        time_log = {}
+        step += 1
+        time_log['progress'] = "{0}/{1} {2:.2f}%".format(
+            step, total_step, (step * 100 / total_step))
+        time_taken = np.mean(meta['time_taken']) * steps_per_batch / 60
+        time_log['time'] = "{0:.2f}/{1:.2f}".format(
+            time_taken * step, (time_taken * total_step))
+        timelog = ""
+        for key in time_log.keys():
+            timelog += "{0}: {1} ".format(key, time_log[key])
+        return log, timelog
+
+    def read_logs(self):
+        filename= self.model_folder
+

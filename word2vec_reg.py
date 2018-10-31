@@ -1,9 +1,10 @@
 import numpy as np
 import tensorflow as tf
 from tensorflow.python.ops import candidate_sampling_ops
+import time
 
 
-class Word2Vec:
+class Word2VecReg:
 
     def __init__(self, vocab_size, embed_size=128, batch_size=128, num_sampled=64, unigrams=None):
         self.vocab_size = vocab_size
@@ -20,6 +21,7 @@ class Word2Vec:
         self._create_loss()
         self._create_final_embedding()
         self._create_optimizer()
+        self._create_regression()
 
     def _create_placeholders(self):
         with tf.name_scope('input_layer'):
@@ -27,6 +29,8 @@ class Word2Vec:
                 tf.int32, shape=[self.batch_size])
             self.train_labels = tf.placeholder(
                 tf.int32, shape=[self.batch_size, 1])
+            self.reg_labels = tf.placeholder(
+                tf.float32, shape=[self.batch_size, self.embedding_size])
 
     def _create_embedding(self):
         with tf.device('/GPU:0'):
@@ -45,6 +49,17 @@ class Word2Vec:
                         [self.vocab_size, self.embedding_size],
                         stddev=1.0 / np.sqrt(self.embedding_size)))
                 self.nce_biases = tf.Variable(tf.zeros([self.vocab_size]))
+
+    def _create_regression(self):
+        with tf.name_scope('regression'):
+            self.reg_pred = tf.layers.dense(
+                self.embed, self.embedding_size, activation=tf.nn.relu)
+            self.reg_loss = tf.losses.mean_squared_error(self.reg_pred, self.reg_labels)
+            # print(loss.get_shape())
+            # self.reg_loss = tf.reduce_mean(
+            #     tf.reshape(loss, [self.batch_size, -1]))
+            self.reg_optimizer = tf.train.GradientDescentOptimizer(
+                1.0).minimize(self.reg_loss)
 
     def _create_loss(self):
         labels_matrix = tf.cast(self.train_labels, dtype=tf.int64)
@@ -71,7 +86,7 @@ class Word2Vec:
     def _create_optimizer(self):
         with tf.name_scope('optimizer'):
             self.optimizer = tf.train.GradientDescentOptimizer(
-                learning_rate=1.0).minimize(self.loss)
+                1.0).minimize(self.loss)
 
     def _create_final_embedding(self):
         norms = tf.sqrt(tf.reduce_sum(
@@ -93,15 +108,22 @@ class Word2Vec:
         return embeds
 
     def train_once(self, session, batch_data):
-        batch_inputs, batch_labels = batch_data
+
+        batch_inputs, batch_labels, batch_reg_labels = batch_data
         feed_dict = {self.train_inputs: batch_inputs,
-                     self.train_labels: batch_labels}
+                     self.train_labels: batch_labels,
+                     self.reg_labels: batch_reg_labels}
 
         loss_val, _ = session.run(
             [self.loss, self.optimizer],
             feed_dict=feed_dict)
-        
+
+        reg_loss_val = 0
+        reg_loss_val, _ = session.run(
+            [self.reg_loss, self.reg_optimizer],
+            feed_dict=feed_dict)
         result = {
-            "em_loss": loss_val
+            "em_loss": loss_val,
+            "reg_loss": reg_loss_val
         }
         return result

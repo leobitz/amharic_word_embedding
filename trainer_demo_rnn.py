@@ -36,7 +36,6 @@ print("Final train data: {0}".format(len(words)))
 gen = generate_batch_rnn_v2(
     int_words, int2word, char2int, batch_size, skip_window, n_chars, n_features)
 
-
 graph = tf.Graph()
 with graph.as_default():
     model = Word2Vec2(vocab_size=vocab_size,
