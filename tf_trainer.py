@@ -57,14 +57,14 @@ class Trainer:
                     start_time = time.time()
                     batch_data = next(gen)
                     result = model.train_once(session, batch_data)
-                    result['time_taken'] = (time.time() - start_time) 
+                    result['time_taken'] = (time.time() - start_time)
                     self.logger(training_meta, result)
 
                 self.save_model(session, self.model_folder, step, epoches)
+                self.save_logs(training_meta)
                 log, time_log = self.get_log_text(
                     training_meta, step, epoches, steps_per_batch)
                 print(time_log, log)
-        
 
     def save_model(self, session, folder, step, epoches):
         checkpoint_name = "{0}/model".format(folder)
@@ -98,5 +98,19 @@ class Trainer:
         return log, timelog
 
     def read_logs(self):
-        filename= self.model_folder
+        filename = self.model_folder + "/logs.txt"
+        lines = open(filename, encoding='utf8').readlines()
+        meta = {}
+        for line in lines:
+            line = line[:-1].split(' ')
+            vals = [float(val) for val in line[1:]]
+            meta[line[0]] = vals
+        return meta
 
+    def save_logs(self, meta: dict):
+        filename = self.model_folder + "/logs.txt"
+        s = ""
+        for key in meta.keys():
+            vals = ' '.join(meta[key])
+            s += "{0} {1}\n".format(key, vals)
+        open(filename, 'w', encoding='utf8').write(s)
