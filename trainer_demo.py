@@ -12,6 +12,7 @@ from word2vec import *
 from data_handle import *
 from word2vec_rnn import Word2Vec2
 from word2vec_reg import Word2VecReg
+from word2vec_pre import Word2VecPre
 from utils import Utils
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
@@ -53,13 +54,18 @@ with graph.as_default():
     #                   num_sampled=5,
     #                   batch_size=batch_size,
     #                   unigrams=unigrams)
-    model = Word2VecReg(vocab_size=vocab_size,
+    # model = Word2VecReg(vocab_size=vocab_size,
+    #                   embed_size=embedding_size,
+    #                   num_sampled=10,
+    #                   batch_size=batch_size,
+    #                   unigrams=unigrams)
+    model = Word2VecPre(vocab_size=vocab_size,
                       embed_size=embedding_size,
                       num_sampled=5,
                       batch_size=batch_size,
                       unigrams=unigrams)
 
-trainer = Trainer(train_name="test")
+trainer = Trainer(train_name="test3")
 
 
 session = trainer.train(graph=graph,
@@ -68,35 +74,35 @@ session = trainer.train(graph=graph,
                         steps_per_batch=steps_per_batch,
                         embed_size=embedding_size,
                         epoches=20)
-print("starting next")
-gen = generate_batch_embed(int_words, batch_size, skip_window)
+# print("starting next")
+# gen = generate_batch_embed(int_words, batch_size, skip_window)
 
-graph = tf.Graph()
-with graph.as_default():
-    model = Word2Vec(vocab_size=vocab_size,
-                     embed_size=embedding_size,
-                     num_sampled=5,
-                     batch_size=batch_size,
-                     unigrams=unigrams)
-    # model = Word2Vec2(vocab_size=vocab_size,
-    #                   n_chars=n_chars,
-    #                   n_features=n_features,
-    #                   embed_size=embedding_size,
-    #                   num_sampled=5,
-    #                   batch_size=batch_size,
-    #                   unigrams=unigrams)
-    # model = Word2VecReg(vocab_size=vocab_size,
-    #                   embed_size=embedding_size,
-    #                   num_sampled=5,
-    #                   batch_size=batch_size,
-    #                   unigrams=unigrams)
+# graph = tf.Graph()
+# with graph.as_default():
+#     model = Word2Vec(vocab_size=vocab_size,
+#                      embed_size=embedding_size,
+#                      num_sampled=10,
+#                      batch_size=batch_size,
+#                      unigrams=unigrams)
+#     # model = Word2Vec2(vocab_size=vocab_size,
+#     #                   n_chars=n_chars,
+#     #                   n_features=n_features,
+#     #                   embed_size=embedding_size,
+#     #                   num_sampled=5,
+#     #                   batch_size=batch_size,
+#     #                   unigrams=unigrams)
+#     # model = Word2VecReg(vocab_size=vocab_size,
+#     #                   embed_size=embedding_size,
+#     #                   num_sampled=5,
+#     #                   batch_size=batch_size,
+#     #                   unigrams=unigrams)
 
-trainer = Trainer(train_name="test")
+# trainer = Trainer(train_name="test")
 
 
-session = trainer.train(graph=graph,
-                        model=model,
-                        gen=gen,
-                        steps_per_batch=steps_per_batch,
-                        embed_size=embedding_size,
-                        epoches=20)
+# session = trainer.train(graph=graph,
+#                         model=model,
+#                         gen=gen,
+#                         steps_per_batch=steps_per_batch,
+#                         embed_size=embedding_size,
+#                         epoches=40)

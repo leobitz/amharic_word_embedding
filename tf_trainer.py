@@ -40,7 +40,7 @@ class Trainer:
     def train(self, graph, model, gen, steps_per_batch, embed_size, epoches=10):
         with graph.as_default():
             init = tf.global_variables_initializer()
-            self.saver = tf.train.Saver()
+            self.saver = tf.train.Saver(max_to_keep=40)
 
         with tf.Session(graph=graph) as session:
 
@@ -97,6 +97,12 @@ class Trainer:
             timelog += "{0}: {1} ".format(key, time_log[key])
         return log, timelog
 
-    def read_logs(self):
-        filename= self.model_folder
+    # def read_logs(self):
+    #     filename= self.model_folder + "/logs.txt"
+    
+    # def save_logs(self, meta):
+    #     filename= self.model_folder + "/logs.txt"
+    #     for key in meta:
+        
+
 

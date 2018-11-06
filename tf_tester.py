@@ -8,16 +8,20 @@ import os
 
 class Tester:
 
-    def __init__(self, graph, word2int, model=None, model_name=None):
+    def __init__(self, graph, session, word2int, model=None):
         self.word2int = word2int
         if model is not None:
+            self.model = model
             with graph.as_default():
-                saver = tf.train.Saver()
-            with tf.Session(graph=graph) as session:
-                saver.restore(session, model_name)
-                embeds = model.get_embedding()
-                self.embeddings = embeds
+                self.saver = tf.train.Saver()
+            self.session = session
 
+    def restore(self, model_name):
+        self.saver.restore(self.session, model_name)
+        embeds = self.model.get_embedding()
+        self.embeddings = embeds
+        return embeds
+        
     def evaluate(self, gensim_model):
         gensim_model.set_embeddings(self.word2int, self.embeddings)
         result = gensim_model.evaluate()

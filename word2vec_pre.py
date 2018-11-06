@@ -4,7 +4,7 @@ from tensorflow.python.ops import candidate_sampling_ops
 import time
 
 
-class Word2VecReg:
+class Word2VecPre:
 
     def __init__(self, vocab_size, embed_size=128, batch_size=128, num_sampled=64, unigrams=None):
         self.vocab_size = vocab_size
@@ -19,9 +19,7 @@ class Word2VecReg:
         self._create_placeholders()
         self._create_embedding()
         self._create_loss()
-        self._create_final_embedding()
         self._create_optimizer()
-        self._create_regression()
 
     def _create_placeholders(self):
         with tf.name_scope('input_layer'):
@@ -41,25 +39,14 @@ class Word2VecReg:
                     tf.random_normal([self.vocab_size, self.embedding_size], -init_width, init_width))
                 self.embed = tf.nn.embedding_lookup(
                     self.embeddings, self.train_inputs)
-
+                self.embed = tf.concat([self.embed ,self.reg_labels], axis=1)
             # Construct the variables for the NCE loss
             with tf.name_scope('dense_layer'):
                 self.nce_weights = tf.Variable(
                     tf.truncated_normal(
-                        [self.vocab_size, self.embedding_size],
-                        stddev=1.0 / np.sqrt(self.embedding_size)))
+                        [self.vocab_size, self.embedding_size * 2],
+                        stddev=1.0 / np.sqrt(self.embedding_size * 2)))
                 self.nce_biases = tf.Variable(tf.zeros([self.vocab_size]))
-
-    def _create_regression(self):
-        with tf.name_scope('regression'):
-            self.reg_pred = tf.layers.dense(
-                self.embed, self.embedding_size)
-            self.reg_loss = tf.losses.mean_squared_error(self.reg_pred, self.reg_labels)
-            # print(loss.get_shape())
-            # self.reg_loss = tf.reduce_mean(
-            #     tf.reshape(loss, [self.batch_size, -1]))
-            self.reg_optimizer = tf.train.GradientDescentOptimizer(
-                1.0).minimize(self.reg_loss)
 
     def _create_loss(self):
         labels_matrix = tf.cast(self.train_labels, dtype=tf.int64)
@@ -88,24 +75,8 @@ class Word2VecReg:
             self.optimizer = tf.train.GradientDescentOptimizer(
                 1.0).minimize(self.loss)
 
-    def _create_final_embedding(self):
-        norms = tf.sqrt(tf.reduce_sum(
-            tf.square(self.embeddings), 1, keepdims=True))
-        self.normalized_embeddings = self.embeddings / norms
-
     def get_embedding(self):
-        # norms = tf.sqrt(tf.reduce_sum(
-        #     tf.square(self.embeddings), 1, keepdims=True))
-        # normalized_embeddings = self.embeddings / norms
-        final_embeddings = self.embeddings.eval()
-        norms = np.linalg.norm(final_embeddings, axis=1, keepdims=True)
-        # final_embeddings = self.embeddings.eval()
-        return final_embeddings / norms
-
-    def get_embedding_v2(self, sess):
-        embeds = sess.run(self.normalized_embeddings)
-        # print(embeds.get_size())
-        return embeds
+        return self.embeddings.eval()
 
     def train_once(self, session, batch_data):
 
@@ -118,12 +89,7 @@ class Word2VecReg:
             [self.loss, self.optimizer],
             feed_dict=feed_dict)
 
-        reg_loss_val = 0
-        reg_loss_val, _ = session.run(
-            [self.reg_loss, self.reg_optimizer],
-            feed_dict=feed_dict)
         result = {
-            "em_loss": loss_val,
-            "reg_loss": reg_loss_val
+            "em_loss": loss_val
         }
         return result
