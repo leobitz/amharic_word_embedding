@@ -24,7 +24,7 @@ char2int, int2char, char2tup, tup2char, n_consonant, n_vowel = build_charset()
 n_chars = 11 + 2
 n_features = len(char2int)
 
-words = read_file()
+words = read_file()[:10000]
 vocab, word2int, int2word = build_vocab(words)
 word2freq = get_frequency(words, word2int, int2word)
 unigrams = [word2freq[int2word[i]] for i in range(len(word2int))]
