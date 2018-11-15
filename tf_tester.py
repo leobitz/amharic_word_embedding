@@ -16,9 +16,12 @@ class Tester:
                 self.saver = tf.train.Saver()
             self.session = session
 
-    def restore(self, model_name):
+    def restore(self, model_name, seq_embedding=None):
         self.saver.restore(self.session, model_name)
-        embeds = self.model.get_embedding()
+        if seq_embedding is not None:
+            embeds = self.model.get_embedding(self.session, seq_embedding)
+        else:
+            embeds = self.model.get_embedding()
         self.embeddings = embeds
         return embeds
         

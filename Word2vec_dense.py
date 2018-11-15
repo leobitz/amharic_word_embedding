@@ -4,7 +4,7 @@ from tensorflow.python.ops import candidate_sampling_ops
 import time
 
 
-class Word2VecPre:
+class Word2VecDense:
 
     def __init__(self, vocab_size, embed_size=128, batch_size=128, num_sampled=64, unigrams=None):
         self.vocab_size = vocab_size
@@ -23,33 +23,37 @@ class Word2VecPre:
 
     def _create_placeholders(self):
         with tf.name_scope('input_layer'):
-            self.train_inputs = tf.placeholder(
-                tf.int32, shape=[self.batch_size])
-            self.train_labels = tf.placeholder(
-                tf.int32, shape=[self.batch_size, 1])
-            self.reg_labels = tf.placeholder(
+            self.context_word = tf.placeholder(
                 tf.float32, shape=[self.batch_size, self.embedding_size])
+            self.target_word = tf.placeholder(
+                tf.float32, shape=[self.batch_size, self.embedding_size])
+            self.labels = tf.placeholder(
+                tf.int32, shape=[self.batch_size, 1])
 
     def _create_embedding(self):
         with tf.device('/GPU:0'):
             # Look up embeddings for inputs.
             with tf.name_scope('embeddings_layer'):
                 init_width = 0.5 / self.embedding_size
-                self.embeddings = tf.Variable(
-                    tf.random_normal([self.vocab_size, self.embedding_size], -init_width, init_width))
-                self.embed = tf.nn.embedding_lookup(
-                    self.embeddings, self.train_inputs)
-                self.embed = self.embed + self.reg_labels
+                self.context_layer = tf.layers.dense(
+                    self.context_word, self.embedding_size)
+                # self.target_layer = tf.layers.dense(
+                #     self.target_word, self.embedding_size)
+                # x = tf.concat([self.context_layer, self.target_layer], axis=1)
+
             # Construct the variables for the NCE loss
-            with tf.name_scope('dense_layer'):
-                self.nce_weights = tf.Variable(
+            with tf.name_scope('final_layer'):
+                self.nce_w = tf.Variable(
                     tf.truncated_normal(
-                        [self.vocab_size, self.embedding_size],
+                        [self.embedding_size, self.vocab_size],
                         stddev=1.0 / np.sqrt(self.embedding_size)))
-                self.nce_biases = tf.Variable(tf.zeros([self.vocab_size]))
+                self.nce_b = tf.Variable(tf.zeros([self.vocab_size]))
+
+            with tf.name_scope('output_layer'):
+                self.outputs = tf.matmul(self.context_layer, self.nce_w) + self.nce_b
 
     def _create_loss(self):
-        labels_matrix = tf.cast(self.train_labels, dtype=tf.int64)
+        labels_matrix = tf.cast(self.labels, dtype=tf.int64)
         sampled_values = candidate_sampling_ops.fixed_unigram_candidate_sampler(
             true_classes=labels_matrix,
             num_true=1,
@@ -61,29 +65,34 @@ class Word2VecPre:
         )
         with tf.name_scope('loss'):
             self.loss = tf.reduce_mean(
-                tf.nn.nce_loss(
-                    weights=self.nce_weights,
-                    biases=self.nce_biases,
-                    labels=self.train_labels,
-                    inputs=self.embed,
+                tf.nn.sampled_softmax_loss(
+                    weights=self.nce_w,
+                    biases=self.nce_b,
+                    labels=self.labels,
+                    inputs=self.outputs,
                     num_sampled=self.num_sampled,
                     num_classes=self.vocab_size,
+                    num_true=1,
                     sampled_values=sampled_values))
 
     def _create_optimizer(self):
         with tf.name_scope('optimizer'):
             self.optimizer = tf.train.GradientDescentOptimizer(
-                1.0).minimize(self.loss)
+                0.1).minimize(self.loss)
 
-    def get_embedding(self):
-        return self.embeddings.eval()
+    def get_embedding(self, session, seq_embeddings):
+        feed_dict = {self.context_word: seq_embeddings,
+                     self.target_word: seq_embeddings}
+        contexts, targets = session.run(
+            [self.context_layer, self.target_word], feed_dict=feed_dict)
+        return contexts, targets
 
     def train_once(self, session, batch_data):
 
-        batch_inputs, batch_labels, batch_reg_labels = batch_data
-        feed_dict = {self.train_inputs: batch_inputs,
-                     self.train_labels: batch_labels,
-                     self.reg_labels: batch_reg_labels}
+        batch_contexts, batch_targets, batch_labels = batch_data
+        feed_dict = {self.context_word: batch_contexts,
+                     self.target_word: batch_targets,
+                     self.labels: batch_labels}
 
         loss_val, _ = session.run(
             [self.loss, self.optimizer],

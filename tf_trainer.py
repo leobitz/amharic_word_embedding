@@ -58,10 +58,14 @@ class Trainer:
                     batch_data = next(gen)
                     result = model.train_once(session, batch_data)
                     result['time_taken'] = (time.time() - start_time)
+                    # result['epoch'] = step
+                    # result['step_in_batch'] = s
+                    if s % 5000 == 0:
+                        print(result)
                     self.logger(training_meta, result)
 
                 self.save_model(session, self.model_folder, step, epoches)
-                self.save_logs(training_meta)
+                # self.save_logs(training_meta)
                 log, time_log = self.get_log_text(
                     training_meta, step, epoches, steps_per_batch)
                 print(time_log, log)
@@ -100,17 +104,20 @@ class Trainer:
     def read_logs(self):
         filename = self.model_folder + "/logs.txt"
         lines = open(filename, encoding='utf8').readlines()
-        meta = {}
-        for line in lines:
+        keys = lines[0][:-1].split(' ')
+        meta = {key: [] for key in keys}
+        for line in lines[1:]:
             line = line[:-1].split(' ')
-            vals = [float(val) for val in line[1:]]
-            meta[line[0]] = vals
+            for i  in range(len(line)):
+                meta[keys[i]] += [float(line[i])]
+        
         return meta
 
     def save_logs(self, meta: dict):
         filename = self.model_folder + "/logs.txt"
-        s = ""
-        for key in meta.keys():
-            vals = ' '.join(meta[key])
-            s += "{0} {1}\n".format(key, vals)
-        open(filename, 'w', encoding='utf8').write(s)
+        keys = list(meta.keys())
+        text = " ".join(keys) + '\n'
+        for i in range(len(meta[keys[0]])):
+            text += "{0}\n".format(' '.join([str(meta[k][i]) for k in keys]))
+
+        open(filename, 'w', encoding='utf8').write(text)

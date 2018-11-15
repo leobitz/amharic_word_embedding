@@ -64,38 +64,41 @@ experiment_result = []
 start = 0
 param_file = 'results/gensim_params.txt'
 result_file = 'results/gensim_word2vec.txt'
+init = [
+    [150, 0.0001, 3, 0, 15, 1],
+    [150, 0.0001, 1, 1, 15, 0,],
+    [150, 0.0001, 1, 1, 10, 0,],
+    [150, 0.0001, 2, 0, 10, 0,],
+    [150, 0.0001, 3, 0, 10, 1,],
+    [150, 0.0001, 7, 0, 10, 1,],
+]
 
-if os.path.exists(param_file):
-    lines = open(param_file, encoding='utf8').readlines()
-    start = len(lines)
+for i_params in range(len(init)):
+    ini = init[i_params]
+    em_size, sample, window, sg, neg, mean = ini
+    model = gensim.models.Word2Vec(sentenses,
+                                   size=em_size,
+                                   iter=20,
+                                   min_count=1,
+                                   negative=neg,
+                                   sg=sg,
+                                   sample=sample,
+                                   window=window,
+                                   cbow_mean=mean,
+                                   workers=14,
+                                   seed=1000
+                                   )
+    analogy_result = calc_analogy_accuracy(
+        model.accuracy('data/analogies.txt'))
+    pick_one_out = round(anomaly(model), 3)
+    analogy_result['semantic_pick'] = pick_one_out
 
-if start < len(init):
-    for i_params in range(start, start + len(init[start:])):
-        ini = init[i_params]
-        em_size, sample, window, sg, neg, mean = ini
-        model = gensim.models.Word2Vec(sentenses,
-                                    size=em_size,
-                                    iter=20,
-                                    min_count=1,
-                                    negative=neg,
-                                    sg=sg,
-                                    sample=sample,
-                                    window=window,
-                                    cbow_mean=mean,
-                                    workers=10,
-                                    seed=1000
-                                    )
-        analogy_result = calc_analogy_accuracy(
-            model.accuracy('data/analogies.txt'))
-        pick_one_out = round(anomaly(model), 3)
-        analogy_result['semantic_pick'] = pick_one_out
+    s = ''
+    for key in analogy_result:
+        s += "{0} ".format(analogy_result[key])
+    s += '\n'
 
-        s = ''
-        for key in analogy_result:
-            s += "{0} ".format(analogy_result[key])
-        s += '\n'
-
-        tex = ' '.join([str(r) for r in init[i_params]]) + '\n'
-        print(i_params, tex, analogy_result)
-        open(result_file, 'a', encoding='utf8').write(s)
-        open(param_file, 'a', encoding='utf8').write(tex)
+    tex = ' '.join([str(r) for r in init[i_params]]) + '\n'
+    print(i_params, tex, analogy_result)
+    open(result_file, 'a', encoding='utf8').write(s)
+    open(param_file, 'a', encoding='utf8').write(tex)

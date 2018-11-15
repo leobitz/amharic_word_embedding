@@ -188,7 +188,7 @@ def generate_batch_embed_v2(data, embeddings, batch_size, skip_window):
     """
     assert batch_size % skip_window == 0
     ci = skip_window  # current_index
-    embeddings = .1 * embeddings
+    # embeddings = normalize(embeddings)
     while True:
         batch_inputs = np.ndarray(shape=(batch_size), dtype=np.int32)
         batch_labels = np.ndarray(shape=(batch_size, 1), dtype=np.int32)
@@ -210,6 +210,36 @@ def generate_batch_embed_v2(data, embeddings, batch_size, skip_window):
         if len(data) - ci - skip_window < batch_size:
             ci = skip_window
         yield batch_inputs, batch_labels, batch_embeddings
+
+
+def generate_batch_input_dense(data, embeddings, batch_size, skip_window, embed_size=28):
+    """
+
+    returns cbow input of integer sequence of words and the seq_embeddings of the context words
+
+    """
+    assert batch_size % skip_window == 0
+    ci = 0
+    embeddings = normalize(embeddings)
+    while True:
+        batch_contexts = np.ndarray(
+            shape=(batch_size, embed_size), dtype=np.float32)
+        batch_targets = np.ndarray(
+            shape=(batch_size, embed_size), dtype=np.float32)
+        batch_labels = np.ndarray(shape=(batch_size, 1), dtype=np.int32)
+
+        for batch_index in range(0, batch_size, skip_window):  # fill the batch inputs
+            context, ci = get_context_words(data, ci, skip_window * 2 + 1)
+            ci += 1
+            target = context.pop(skip_window)
+            context = np.random.choice(context, skip_window, replace=False)
+            batch_contexts[batch_index:batch_index +
+                           skip_window] = embeddings[context]
+            batch_targets[batch_index:batch_index +
+                          skip_window] = embeddings[target]
+            batch_labels[batch_index:batch_index + skip_window, 0] = target
+
+        yield batch_contexts, batch_targets, batch_labels
 
 
 def normalize(array):
@@ -420,6 +450,26 @@ def generate_word_images(words, char2int, batch_size):
         batch += 1
         if batch == n_batchs:
             batch = 0
+
+
+def generate_word_images_flat(words, char2tup, batch_size, max_char_len, n_consonant, n_vowels=10):
+    """
+
+    returns cbow input of integer sequence of words. the inputs are for RNN where the context, is normal
+    but for the decoder, there is an input and output
+
+    """
+    ci = 0
+    while True:
+        batch_input = np.ndarray((batch_size, 13 * (n_consonant + n_vowels)))
+        words, ci = get_context_words(words, ci, batch_size)
+        for i in range(batch_size):
+            con_vec, vow_vec = word2vec_seperated(
+                char2tup, words[i], max_char_len, n_consonant, n_vowels)
+            batch_input[i] = np.concatenate([con_vec, vow_vec], axis=1).flatten()
+        ci += batch_size
+        yield batch_input, batch_input
+            
 
 
 def generate_word_images_multi(words, char2tup, batch_size, n_consonant, n_vowels):

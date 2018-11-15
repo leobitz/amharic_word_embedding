@@ -14,16 +14,15 @@ from tf_trainer import *
 from word2vec import *
 from word2vec_rnn import *
 from word2vec_pre import Word2VecPre
+from word2vec_trans import Word2VecTrans
+from Word2vec_dense import Word2VecDense
+from word2vec_merged import Word2VecMerged
 from gensim_wrapper import *
 from data_handle import *
 from utils import Utils
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
-
-batch_size = 500
-embedding_size = 128
-skip_window = 5
 
 char2int, int2char, char2tup, tup2char, n_consonant, n_vowel = build_charset()
 
@@ -35,6 +34,10 @@ vocab, word2int, int2word = build_vocab(words)
 word2freq = get_frequency(words, word2int, int2word)
 unigrams = [word2freq[int2word[i]] for i in range(len(word2int))]
 
+batch_size = 128
+embedding_size = 128
+skip_window = 5
+
 vocab_size = len(vocab)
 steps_per_batch = len(words) // batch_size
 metrics = {}
@@ -42,12 +45,12 @@ int_words = words_to_ints(word2int, words)
 
 graph = tf.Graph()
 with graph.as_default():
-    
-    # model = Word2Vec(vocab_size=vocab_size,
-    #                  embed_size=embedding_size,
-    #                  num_sampled=5,
-    #                  batch_size=batch_size,
-    #                  unigrams=unigrams)
+
+    model = Word2VecMerged(vocab_size=vocab_size,
+                           embed_size=embedding_size,
+                           num_sampled=5,
+                           batch_size=batch_size,
+                           unigrams=unigrams)
     # model = Word2Vec2(vocab_size=vocab_size,
     #                   n_chars=n_chars,
     #                   n_features=n_features,
@@ -60,28 +63,34 @@ with graph.as_default():
     #                     num_sampled=5,
     #                     batch_size=batch_size,
     #                     unigrams=unigrams)
-    model = Word2VecPre(vocab_size=vocab_size,
-                        embed_size=embedding_size,
-                        num_sampled=5,
-                        batch_size=batch_size,
-                        unigrams=unigrams)
+    # model = Word2VecDense(vocab_size=vocab_size,
+    #                     embed_size=embedding_size,
+    #                     num_sampled=5,
+    #                     batch_size=batch_size,
+    #                     unigrams=unigrams)
 with tf.Session(graph=graph) as session:
     tester = Tester(graph, session, word2int, model)
     gensim_model = GensimWrapper(embedding_size, 0, log=False)
-    name = "test3"
-    for ti in range(0, 20):
+    name = "test8"
+    for ti in range(0, 12):
         model_name = "log/{0}/model-{1}".format(name, ti)
 
-        embeddings = tester.restore(model_name)
         seq_emb = np.load('results/char_embedding.npy')
+        embeddings = tester.restore(model_name)
+        # cons, tars = tester.restore(model_name, seq_emb)
+        # embeddings = np.concatenate([embeddings, .0357 * seq_emb], axis=1)
+        # seq_norm = np.mean(np.linalg.norm(embeddings))
+        # print(seq_norm)
+        # seq_norm = np.mean(np.linalg.norm(seq_emb))
+        # # print(seq_norm)
+        # em_norm = np.mean(np.linalg.norm(embeddings))
+        # embeddings =  seq_emb / seq_norm + embeddings/em_norm
+        # embeddings = embeddings + 0.033 * seq_emb
+        # cons, tars = model.get_embedding(session, seq_emb)
+        embeddings_normal = normalize(embeddings)
 
-        # embeddings = np.concatenate([normalize(embeddings), normalize(.1*seq_emb)], axis=1)
-        seq_norm = np.mean(np.linalg.norm(seq_emb))
-        em_norm = np.mean(np.linalg.norm(embeddings))
-        embeddings = seq_emb / seq_norm + embeddings/em_norm
-        embeddings_normal = tester.normalize(embeddings)
-        
         result = tester.evaluate_v2(gensim_model, embeddings_normal)
+        result['average'] = (result['semantic'] + result['syntactic']) / 2
         print(result)
         for key in result:
             if key not in metrics:

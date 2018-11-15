@@ -4,7 +4,7 @@ from tensorflow.python.ops import candidate_sampling_ops
 import time
 
 
-class Word2VecPre:
+class Word2VecTrans:
 
     def __init__(self, vocab_size, embed_size=128, batch_size=128, num_sampled=64, unigrams=None):
         self.vocab_size = vocab_size
@@ -37,9 +37,10 @@ class Word2VecPre:
                 init_width = 0.5 / self.embedding_size
                 self.embeddings = tf.Variable(
                     tf.random_normal([self.vocab_size, self.embedding_size], -init_width, init_width))
-                self.embed = tf.nn.embedding_lookup(
+                embed = tf.nn.embedding_lookup(
                     self.embeddings, self.train_inputs)
-                self.embed = self.embed + self.reg_labels
+                x = tf.layers.dense(self.reg_labels, self.embedding_size, activation=tf.nn.relu)
+                self.embed = embed + x
             # Construct the variables for the NCE loss
             with tf.name_scope('dense_layer'):
                 self.nce_weights = tf.Variable(
@@ -73,7 +74,7 @@ class Word2VecPre:
     def _create_optimizer(self):
         with tf.name_scope('optimizer'):
             self.optimizer = tf.train.GradientDescentOptimizer(
-                1.0).minimize(self.loss)
+                0.01).minimize(self.loss)
 
     def get_embedding(self):
         return self.embeddings.eval()
