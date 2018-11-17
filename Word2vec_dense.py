@@ -37,9 +37,9 @@ class Word2VecDense:
                 init_width = 0.5 / self.embedding_size
                 self.context_layer = tf.layers.dense(
                     self.context_word, self.embedding_size)
-                # self.target_layer = tf.layers.dense(
-                #     self.target_word, self.embedding_size)
-                # x = tf.concat([self.context_layer, self.target_layer], axis=1)
+                self.target_layer = tf.layers.dense(
+                    self.target_word, self.embedding_size, activation=tf.nn.relu)
+                x = tf.concat([self.context_layer, self.target_layer], axis=1)
 
             # Construct the variables for the NCE loss
             with tf.name_scope('final_layer'):

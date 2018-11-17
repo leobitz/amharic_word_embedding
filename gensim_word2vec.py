@@ -65,27 +65,22 @@ start = 0
 param_file = 'results/gensim_params.txt'
 result_file = 'results/gensim_word2vec.txt'
 init = [
-    [150, 0.0001, 3, 0, 15, 1],
-    [150, 0.0001, 1, 1, 15, 0,],
-    [150, 0.0001, 1, 1, 10, 0,],
-    [150, 0.0001, 2, 0, 10, 0,],
-    [150, 0.0001, 3, 0, 10, 1,],
-    [150, 0.0001, 7, 0, 10, 1,],
+    [128, 0.0001, 1, 1, 15, 0],
 ]
 
 for i_params in range(len(init)):
     ini = init[i_params]
     em_size, sample, window, sg, neg, mean = ini
     model = gensim.models.Word2Vec(sentenses,
-                                   size=em_size,
+                                   size=200,
                                    iter=20,
                                    min_count=1,
-                                   negative=neg,
-                                   sg=sg,
-                                   sample=sample,
-                                   window=window,
-                                   cbow_mean=mean,
-                                   workers=14,
+                                   negative=15,
+                                   sg=0,
+                                #    sample=sample,
+                                #    window=window,
+                                   cbow_mean=1,
+                                   workers=15,
                                    seed=1000
                                    )
     analogy_result = calc_analogy_accuracy(

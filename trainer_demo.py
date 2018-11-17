@@ -38,19 +38,19 @@ steps_per_batch = len(words) * skip_window // batch_size
 int_words = words_to_ints(word2int, words)
 print("Final train data: {0}".format(len(words)))
 embeddings = np.load("results/char_embedding.npy")
-gen = generate_batch_embed(int_words, batch_size, skip_window)
+# gen = generate_batch_embed(int_words, batch_size, skip_window)
 # gen = generate_batch_embed_v2(int_words, embeddings, batch_size, skip_window)
-# gen = generate_batch_input_dense(int_words, embeddings, batch_size, skip_window, embedding_size)
+gen = generate_batch_input_dense(int_words, embeddings, batch_size, skip_window, embedding_size)
 # gen = generate_batch_rnn_v2(
 #     int_words, int2word, char2int, batch_size, skip_window, n_chars, n_features)
 
 graph = tf.Graph()
 with graph.as_default():
-    model = Word2VecMerged(vocab_size=vocab_size,
-                           embed_size=embedding_size,
-                           num_sampled=5,
-                           batch_size=batch_size,
-                           unigrams=unigrams)
+    # model = Word2VecMerged(vocab_size=vocab_size,
+    #                        embed_size=embedding_size,
+    #                        num_sampled=5,
+    #                        batch_size=batch_size,
+    #                        unigrams=unigrams)
     # model = Word2Vec2(vocab_size=vocab_size,
     #                   n_chars=n_chars,
     #                   n_features=n_features,
@@ -63,13 +63,13 @@ with graph.as_default():
     #                   num_sampled=10,
     #                   batch_size=batch_size,
     #                   unigrams=unigrams)
-    # model = Word2VecDense(vocab_size=vocab_size,
-    #                   embed_size=embedding_size,
-    #                   num_sampled=10,
-    #                   batch_size=batch_size,
-    #                   unigrams=unigrams)
+    model = Word2VecDense(vocab_size=vocab_size,
+                      embed_size=embedding_size,
+                      num_sampled=10,
+                      batch_size=batch_size,
+                      unigrams=unigrams)
 
-trainer = Trainer(train_name="test8")
+trainer = Trainer(train_name="dense")
 
 
 session = trainer.train(graph=graph,

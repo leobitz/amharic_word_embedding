@@ -243,6 +243,8 @@ def generate_batch_input_dense(data, embeddings, batch_size, skip_window, embed_
 
 
 def normalize(array):
+    if len(array.shape) == 1:
+        return array / np.linalg.norm(array)
     norms = np.linalg.norm(array, axis=1, keepdims=True)
     return array / norms
 

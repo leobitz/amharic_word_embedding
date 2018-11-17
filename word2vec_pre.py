@@ -39,7 +39,9 @@ class Word2VecPre:
                     tf.random_normal([self.vocab_size, self.embedding_size], -init_width, init_width))
                 self.embed = tf.nn.embedding_lookup(
                     self.embeddings, self.train_inputs)
-                self.embed = self.embed + self.reg_labels
+                self.target_layer = tf.layers.dense(
+                    self.reg_labels, self.embedding_size, activation=tf.nn.relu)
+                self.embed = tf.concat([self.embed, self.target_layer], axis=1)
             # Construct the variables for the NCE loss
             with tf.name_scope('dense_layer'):
                 self.nce_weights = tf.Variable(
