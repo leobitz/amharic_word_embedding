@@ -4,7 +4,7 @@ import collections
 import numpy as np
 import random
 import os
-# logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
+logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
 random.seed(1000)
 np.random.seed(1000)
 
@@ -33,7 +33,7 @@ def calc_analogy_accuracy(result):
     return results
 
 
-sentenses = open('data/news.txt', encoding='utf-8').read().split('*')
+sentenses = open('data/all.txt', encoding='utf-8').read().split('*')
 sentenses = [s.strip().split() for s in sentenses]
 
 params = {
@@ -72,28 +72,36 @@ for i_params in range(len(init)):
     ini = init[i_params]
     em_size, sample, window, sg, neg, mean = ini
     model = gensim.models.Word2Vec(sentenses,
-                                   size=200,
-                                   iter=20,
-                                   min_count=1,
+                                   size=75,
+                                   iter=10,
+                                #    min_count=1,
                                    negative=15,
                                    sg=0,
-                                #    sample=sample,
-                                #    window=window,
+                                #    sample=0.00045,
+                                   window=5,
                                    cbow_mean=1,
-                                   workers=15,
-                                   seed=1000
+                                   alpha=.05,
+                                   workers=10
                                    )
-    analogy_result = calc_analogy_accuracy(
-        model.accuracy('data/analogies.txt'))
-    pick_one_out = round(anomaly(model), 3)
-    analogy_result['semantic_pick'] = pick_one_out
+    result = model.accuracy('data/analogies.txt', restrict_vocab=len(model.wv.vocab))
+    s = ""   
+    for row in result[1]['correct']:
+        s += str(row) + "\n"
+    open('results/corrects2.txt', mode='w', encoding='utf-8').write(s)
+    s = ""   
+    for row in result[1]['incorrect']:
+        s += str(row) + "\n"
+    open('results/incorrect2.txt', mode='w', encoding='utf-8').write(s)
+    # analogy_result = calc_analogy_accuracy(result)
+    # pick_one_out = round(anomaly(model), 3)
+    # analogy_result['semantic_pick'] = pick_one_out
 
-    s = ''
-    for key in analogy_result:
-        s += "{0} ".format(analogy_result[key])
-    s += '\n'
+    # s = ''
+    # for key in analogy_result:
+    #     s += "{0} ".format(analogy_result[key])
+    # s += '\n'
 
-    tex = ' '.join([str(r) for r in init[i_params]]) + '\n'
-    print(i_params, tex, analogy_result)
-    open(result_file, 'a', encoding='utf8').write(s)
-    open(param_file, 'a', encoding='utf8').write(tex)
+    # tex = ' '.join([str(r) for r in init[i_params]]) + '\n'
+    # print(i_params, tex, analogy_result)
+    # open(result_file, 'a', encoding='utf8').write(s)
+    # open(param_file, 'a', encoding='utf8').write(tex)

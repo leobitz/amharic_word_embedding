@@ -5,22 +5,22 @@ import collections
 
 class GensimWrapper:
 
-    def __init__(self, embed_size=128, iter=5, log=False):
+    def __init__(self, file="data/all.txt", embed_size=128, iter=5, log=False):
         if log:
             logging.basicConfig(
                 format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
         self.embed_size = embed_size
         self.iter = iter
-        self._prepare_data()
+        self._prepare_data(file)
         self._create_model()
 
-    def _prepare_data(self):
-        sentenses = open('data/news.txt', encoding='utf-8').read().split('*')
+    def _prepare_data(self, file):
+        sentenses = open(file, encoding='utf-8').read().split('*')
         self.data = [s.strip().split() for s in sentenses]
 
-    def _create_model(self):
+    def _create_model(self, min_count=5):
         self.model = gensim.models.Word2Vec(
-            self.data, size=self.embed_size, iter=self.iter, min_count=1)
+            self.data, size=self.embed_size, iter=self.iter, min_count=min_count)
 
     def evaluate_anomaly(self):
         lines = open('data/anomaly.txt', encoding='utf-8').readlines()
@@ -34,11 +34,11 @@ class GensimWrapper:
         return correct * 100 / len(lines)
 
     def evaluate_semantic_analogy(self):
-        result = self.model.accuracy('data/semantic.txt')
+        result = self.model.wv.accuracy('data/semantic.txt', restrict_vocab=len(self.model.wv.vocab))
         return result
 
     def evaluate_synatctic_analogy(self):
-        result = self.model.accuracy('data/syntax.txt')
+        result = self.model.wv.accuracy('data/syntax.txt', restrict_vocab=len(self.model.wv.vocab))
         return result
 
     def evaluate(self):

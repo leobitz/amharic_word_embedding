@@ -32,6 +32,16 @@ def get_frequency(words, word2int, int2word):
         word2freq[word] += 1.0
     return word2freq
 
+def min_count_threshold(words, word2freq, min_count=5):
+    new_words = []
+    for word in words:
+        if word2freq[word] >= min_count:
+            new_words.append(word)
+        else:
+            new_words.append("###")
+    assert len(new_words) == len(words)
+    return new_words
+
 
 def ns_sample(word2freq, word2int, int2word, rate):
     """
