@@ -2,6 +2,7 @@ import collections
 from collections import Counter
 import numpy as np
 import random
+from gensim_wrapper import *
 
 
 def read_file(filename='data/news.txt'):
@@ -673,6 +674,12 @@ def subsampling(int_words, threshold=1e-5):
     train_words = [word for word in int_words if random.random()
                    < (1 - p_drop[word])]
     return train_words
+
+def evaluate(word2int, embeddings):
+    gensim = GensimWrapper(embeddings.shape[1], 0, log=False)
+    gensim.set_embeddings(word2int, embeddings)
+    result = gensim.evaluate()
+    return result
 
 # words = read_file()
 # vocab, word2int, int2word = build_vocab(words)
