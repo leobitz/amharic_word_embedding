@@ -46,11 +46,11 @@ int_words = words_to_ints(word2int, words)
 graph = tf.Graph()
 with graph.as_default():
 
-    model = Word2VecMerged(vocab_size=vocab_size,
-                           embed_size=embedding_size,
-                           num_sampled=5,
-                           batch_size=batch_size,
-                           unigrams=unigrams)
+    # model = Word2VecMerged(vocab_size=vocab_size,
+    #                        embed_size=embedding_size,
+    #                        num_sampled=5,
+    #                        batch_size=batch_size,
+    #                        unigrams=unigrams)
     # model = Word2Vec2(vocab_size=vocab_size,
     #                   n_chars=n_chars,
     #                   n_features=n_features,
@@ -58,11 +58,11 @@ with graph.as_default():
     #                   num_sampled=5,
     #                   batch_size=batch_size,
     #                   unigrams=unigrams)
-    # model = Word2VecReg(vocab_size=vocab_size,
-    #                     embed_size=embedding_size,
-    #                     num_sampled=5,
-    #                     batch_size=batch_size,
-    #                     unigrams=unigrams)
+    model = Word2VecReg(vocab_size=vocab_size,
+                        embed_size=embedding_size,
+                        num_sampled=5,
+                        batch_size=batch_size,
+                        unigrams=unigrams)
     # model = Word2VecDense(vocab_size=vocab_size,
     #                     embed_size=embedding_size,
     #                     num_sampled=5,
@@ -70,9 +70,9 @@ with graph.as_default():
     #                     unigrams=unigrams)
 with tf.Session(graph=graph) as session:
     tester = Tester(graph, session, word2int, model)
-    gensim_model = GensimWrapper(embedding_size, 0, log=False)
-    name = "test8"
-    for ti in range(0, 12):
+    gensim_model = GensimWrapper('data/news.txt', embedding_size, 0, log=False)
+    name = "reg"
+    for ti in range(0, 6):
         model_name = "log/{0}/model-{1}".format(name, ti)
 
         seq_emb = np.load('results/char_embedding.npy')

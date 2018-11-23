@@ -6,12 +6,13 @@ import time
 
 class Word2VecReg:
 
-    def __init__(self, vocab_size, embed_size=128, batch_size=128, num_sampled=64, unigrams=None):
+    def __init__(self, vocab_size, embed_size=128, batch_size=128, num_sampled=64, reg_embed_size=50, unigrams=None):
         self.vocab_size = vocab_size
         self.embedding_size = embed_size
         self.batch_size = batch_size
         self.num_sampled = num_sampled
         self.unigrams = unigrams
+        self.reg_embed_size = reg_embed_size
         self.build()
         # self._forward()
 
@@ -30,7 +31,7 @@ class Word2VecReg:
             self.train_labels = tf.placeholder(
                 tf.int32, shape=[self.batch_size, 1])
             self.reg_labels = tf.placeholder(
-                tf.float32, shape=[self.batch_size, self.embedding_size])
+                tf.float32, shape=[self.batch_size, self.reg_embed_size])
 
     def _create_embedding(self):
         with tf.device('/GPU:0'):
@@ -52,12 +53,9 @@ class Word2VecReg:
 
     def _create_regression(self):
         with tf.name_scope('regression'):
-            self.reg_pred = tf.layers.dense(
-                self.embed, self.embedding_size)
-            self.reg_loss = tf.losses.mean_squared_error(self.reg_pred, self.reg_labels)
-            # print(loss.get_shape())
-            # self.reg_loss = tf.reduce_mean(
-            #     tf.reshape(loss, [self.batch_size, -1]))
+            self.reg_pred = tf.layers.dense(self.embed, self.reg_embed_size)
+            self.reg_loss = tf.losses.mean_squared_error(
+                self.reg_pred, self.reg_labels)
             self.reg_optimizer = tf.train.GradientDescentOptimizer(
                 1.0).minimize(self.reg_loss)
 
@@ -114,14 +112,10 @@ class Word2VecReg:
                      self.train_labels: batch_labels,
                      self.reg_labels: batch_reg_labels}
 
-        loss_val, _ = session.run(
-            [self.loss, self.optimizer],
+        loss_val, _,  reg_loss_val, _ = session.run(
+            [self.loss, self.optimizer, self.reg_loss, self.reg_optimizer],
             feed_dict=feed_dict)
 
-        reg_loss_val = 0
-        reg_loss_val, _ = session.run(
-            [self.reg_loss, self.reg_optimizer],
-            feed_dict=feed_dict)
         result = {
             "em_loss": loss_val,
             "reg_loss": reg_loss_val
