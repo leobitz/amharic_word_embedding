@@ -10,3 +10,4 @@ model_weights/
 *.sqlite
 models/*
 data/*
+model_weights/*
