@@ -11,6 +11,13 @@ def remove_large_words(words, max_len):
         if len(word) <= max_len:
             new_list.append(word)
     return new_list
+def get_new_embedding(oldw2i, neww2i, embeddings):
+    new_em = np.ndarray((len(neww2i), embeddings.shape[1]), dtype=np.float32)
+    for key in neww2i:
+        index = oldw2i[key]
+        em = embeddings[index]
+        new_em[neww2i[neww2i[key]]] = em
+    return new_em
 
 
 batch_size = 500

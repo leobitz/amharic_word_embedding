@@ -23,6 +23,18 @@ from utils import Utils
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
+def get_new_embedding(oldw2i, neww2i, embeddings):
+    new_em = np.ndarray((len(neww2i), embeddings.shape[1]), dtype=np.float32)
+    for key in neww2i:
+        if key != "<unk>":
+            index = oldw2i[key]
+            em = embeddings[index]
+            new_em[neww2i[key]] = em
+    new_em[0] = np.random.rand(50)
+    return new_em
+
+
+
 
 char2int, int2char, char2tup, tup2char, n_consonant, n_vowel = build_charset()
 
@@ -30,6 +42,10 @@ n_chars = 11 + 2
 n_features = len(char2int)
 
 words = read_file()
+unkown_word = "<unk>"
+# words = [unkown_word] + words
+xvocab, xword2int, xint2word = build_vocab(words)
+
 words, word2freq = min_count_threshold(words)
 vocab, word2int, int2word = build_vocab(words)
 print(len(vocab))
@@ -74,12 +90,13 @@ with tf.Session(graph=graph) as session:
     tester = Tester(graph, session, word2int, model)
     gensim_model = GensimWrapper('data/news.txt', embedding_size, 0, log=False)
     name = "newdense"
-    for ti in range(0, 6):
+    for ti in range(0, 11):
         model_name = "log/{0}/model-{1}".format(name, ti)
         seq_emb = np.load('results/seq_encoding.npy')
+        seq_emb = get_new_embedding(xword2int, word2int, seq_emb)
         inputs = np.array(list(word2int.values()), dtype=np.int32)
-        embed = model.get_embed_2(session, seq_emb[inputs], inputs)
         embeddings = tester.restore(model_name)
+        embed = model.get_embed_2(session, seq_emb[inputs], inputs)
         # cons, tars = tester.restore(model_name, seq_emb)
         # embeddings = np.concatenate([embeddings, .0357 * seq_emb], axis=1)
         # seq_norm = np.mean(np.linalg.norm(embeddings))
@@ -90,9 +107,9 @@ with tf.Session(graph=graph) as session:
         # embeddings =  seq_emb / seq_norm + embeddings/em_norm
         # embeddings = embeddings + 0.033 * seq_emb
         # cons, tars = model.get_embedding(session, seq_emb)
-        embeddings_normal = normalize(embeddings)
+        embeddings_normal = normalize(embed)
         # for kki in range(0, batch_size)
-        result = tester.evaluate_v2(gensim_model, embed)
+        result = tester.evaluate_v2(gensim_model, embeddings_normal)
         result['average'] = (result['semantic'] + result['syntactic']) / 2
         print(result)
         for key in result:

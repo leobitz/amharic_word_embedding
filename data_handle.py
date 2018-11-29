@@ -64,6 +64,7 @@ def ns_sample(word2freq, word2int, int2word, rate):
             final.append(word_int)
     return final
 
+
 def min_count_threshold(words, min_count=5):
     new_words = []
     word2freq = {}
@@ -73,7 +74,7 @@ def min_count_threshold(words, min_count=5):
         if word not in word2freq:
             word2freq[word] = 0
         word2freq[word] += 1
-    
+
     freq = {}
     freq[unkown_word] = 0
     for word in words:
@@ -84,9 +85,7 @@ def min_count_threshold(words, min_count=5):
             freq[word] += 1
         else:
             freq[unkown_word] += 1
-    
-    # assert len(new_words) == len(words)
-    new_words.append(unkown_word)
+
     return new_words, freq
 
 
@@ -232,17 +231,18 @@ def generate_batch_embed_v2(data, embeddings, batch_size, skip_window):
         batch_embeddings = np.ndarray(
             shape=(batch_size, embeddings.shape[1]), dtype=np.float32)
         batch_index = 0
-        for batch_index in range(0, batch_size, skip_window):  # fill the batch inputs
+        win = skip_window * 2
+        for batch_index in range(0, batch_size, win):  # fill the batch inputs
             context = data[ci - skip_window:ci + skip_window + 1]
             # remove the target from context words
             target = context.pop(skip_window)
             # context = random.sample(context, skip_window * 2)
-            context = np.random.choice(context, skip_window, replace=False)
+            # context = np.random.choice(context, skip_window, replace=False)
             batch_embeddings[batch_index:batch_index +
-                             skip_window] = embeddings[context]
+                             win] = embeddings[context]
             batch_inputs[batch_index:batch_index +
-                         skip_window] = context
-            batch_labels[batch_index:batch_index + skip_window, 0] = target
+                         win] = context
+            batch_labels[batch_index:batch_index + win, 0] = target
             ci += 1
         if len(data) - ci - skip_window < batch_size:
             ci = skip_window

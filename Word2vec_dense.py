@@ -41,6 +41,7 @@ class Word2VecDense:
                 self.embedx = tf.nn.embedding_lookup(
                     self.embeddings, self.context_word)
                 x = tf.concat([self.embedx, self.seq_encoding], axis=1)
+                x = tf.layers.dense(x, self.embedding_size, activation=tf.nn.relu)
                 self.embed = tf.layers.dense(x, self.embedding_size)
 
             # Construct the variables for the NCE loss
