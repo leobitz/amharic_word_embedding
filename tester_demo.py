@@ -30,12 +30,14 @@ n_chars = 11 + 2
 n_features = len(char2int)
 
 words = read_file()
+words, word2freq = min_count_threshold(words)
 vocab, word2int, int2word = build_vocab(words)
-word2freq = get_frequency(words, word2int, int2word)
+print(len(vocab))
+# word2freq = get_frequency(words, word2int, int2word)
 unigrams = [word2freq[int2word[i]] for i in range(len(word2int))]
 
-batch_size = 128
-embedding_size = 128
+batch_size = len(vocab)
+embedding_size = 75
 skip_window = 5
 
 vocab_size = len(vocab)
@@ -58,24 +60,25 @@ with graph.as_default():
     #                   num_sampled=5,
     #                   batch_size=batch_size,
     #                   unigrams=unigrams)
-    model = Word2VecReg(vocab_size=vocab_size,
-                        embed_size=embedding_size,
-                        num_sampled=5,
-                        batch_size=batch_size,
-                        unigrams=unigrams)
-    # model = Word2VecDense(vocab_size=vocab_size,
+    # model = Word2VecReg(vocab_size=vocab_size,
     #                     embed_size=embedding_size,
     #                     num_sampled=5,
     #                     batch_size=batch_size,
     #                     unigrams=unigrams)
+    model = Word2VecDense(vocab_size=vocab_size,
+                        embed_size=embedding_size,
+                        num_sampled=5,
+                        batch_size=batch_size,
+                        unigrams=unigrams)
 with tf.Session(graph=graph) as session:
     tester = Tester(graph, session, word2int, model)
     gensim_model = GensimWrapper('data/news.txt', embedding_size, 0, log=False)
-    name = "reg"
+    name = "newdense"
     for ti in range(0, 6):
         model_name = "log/{0}/model-{1}".format(name, ti)
-
-        seq_emb = np.load('results/char_embedding.npy')
+        seq_emb = np.load('results/seq_encoding.npy')
+        inputs = np.array(list(word2int.values()), dtype=np.int32)
+        embed = model.get_embed_2(session, seq_emb[inputs], inputs)
         embeddings = tester.restore(model_name)
         # cons, tars = tester.restore(model_name, seq_emb)
         # embeddings = np.concatenate([embeddings, .0357 * seq_emb], axis=1)
@@ -88,15 +91,15 @@ with tf.Session(graph=graph) as session:
         # embeddings = embeddings + 0.033 * seq_emb
         # cons, tars = model.get_embedding(session, seq_emb)
         embeddings_normal = normalize(embeddings)
-
-        result = tester.evaluate_v2(gensim_model, embeddings_normal)
+        # for kki in range(0, batch_size)
+        result = tester.evaluate_v2(gensim_model, embed)
         result['average'] = (result['semantic'] + result['syntactic']) / 2
         print(result)
         for key in result:
             if key not in metrics:
                 metrics[key] = []
             metrics[key] += [result[key]]
-# print(metrics)
+
 for key in metrics:
     plt.plot(range(len(metrics[key])), metrics[key], label=key)
 plt.xlabel("Epoch")

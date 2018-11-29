@@ -64,6 +64,31 @@ def ns_sample(word2freq, word2int, int2word, rate):
             final.append(word_int)
     return final
 
+def min_count_threshold(words, min_count=5):
+    new_words = []
+    word2freq = {}
+    unkown_word = "<unk>"
+    new_words.append(unkown_word)
+    for word in words:
+        if word not in word2freq:
+            word2freq[word] = 0
+        word2freq[word] += 1
+    
+    freq = {}
+    freq[unkown_word] = 0
+    for word in words:
+        if word2freq[word] >= min_count:
+            new_words.append(word)
+            if word not in freq:
+                freq[word] = 0
+            freq[word] += 1
+        else:
+            freq[unkown_word] += 1
+    
+    # assert len(new_words) == len(words)
+    new_words.append(unkown_word)
+    return new_words, freq
+
 
 def build_vocab(words):
     """
@@ -200,12 +225,12 @@ def generate_batch_embed_v2(data, embeddings, batch_size, skip_window):
     """
     assert batch_size % skip_window == 0
     ci = skip_window  # current_index
-    # embeddings = normalize(embeddings)
+    embeddings = normalize(embeddings)
     while True:
         batch_inputs = np.ndarray(shape=(batch_size), dtype=np.int32)
         batch_labels = np.ndarray(shape=(batch_size, 1), dtype=np.int32)
         batch_embeddings = np.ndarray(
-            shape=(batch_size, embeddings.shape[1]), dtype=np.int32)
+            shape=(batch_size, embeddings.shape[1]), dtype=np.float32)
         batch_index = 0
         for batch_index in range(0, batch_size, skip_window):  # fill the batch inputs
             context = data[ci - skip_window:ci + skip_window + 1]

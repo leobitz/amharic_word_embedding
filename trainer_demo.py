@@ -21,13 +21,14 @@ from utils import Utils
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 batch_size = 120
-embedding_size = 128
-skip_window = 5
+embedding_size = 75
+skip_window = 1
 char2int, int2char, char2tup, tup2char, n_consonant, n_vowel = build_charset()
 n_chars = 11 + 2
 n_features = len(char2int)
 
 words = read_file()
+words, word2freq = min_count_threshold(words)
 vocab, word2int, int2word = build_vocab(words)
 word2freq = get_frequency(words, word2int, int2word)
 unigrams = [word2freq[int2word[i]] for i in range(len(word2int))]
@@ -58,18 +59,18 @@ with graph.as_default():
     #                   num_sampled=5,
     #                   batch_size=batch_size,
     #                   unigrams=unigrams)
-    model = Word2VecReg(vocab_size=vocab_size,
-                      embed_size=embedding_size,
-                      num_sampled=10,
-                      batch_size=batch_size,
-                      unigrams=unigrams)
-    # model = Word2VecDense(vocab_size=vocab_size,
+    # model = Word2VecReg(vocab_size=vocab_size,
     #                   embed_size=embedding_size,
     #                   num_sampled=10,
     #                   batch_size=batch_size,
     #                   unigrams=unigrams)
+    model = Word2VecDense(vocab_size=vocab_size,
+                      embed_size=embedding_size,
+                      num_sampled=5,
+                      batch_size=batch_size,
+                      unigrams=unigrams)
 
-trainer = Trainer(train_name="reg")
+trainer = Trainer(train_name="newdense")
 
 
 session = trainer.train(graph=graph,
