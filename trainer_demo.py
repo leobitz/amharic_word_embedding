@@ -41,7 +41,6 @@ n_features = len(char2int)
 
 words = read_file()
 unkown_word = "<unk>"
-# words = [unkown_word] + words
 xvocab, xword2int, xint2word = build_vocab(words)
 
 words, word2freq = min_count_threshold(words)
@@ -49,14 +48,14 @@ vocab, word2int, int2word = build_vocab(words)
 word2freq = get_frequency(words, word2int, int2word)
 unigrams = [word2freq[int2word[i]] for i in range(len(word2int))]
 print(word2int['<unk>'])
-# print(xword2int['<unk>'])
+
 vocab_size = len(vocab)
-steps_per_batch = len(words) * skip_window*2 // batch_size
+steps_per_batch = len(words) * skip_window * 2 // batch_size
 
 int_words = words_to_ints(word2int, words)
 print("Final train data: {0}".format(len(words)))
 embeddings = np.load("results/seq_encoding.npy")
-embeddings = get_new_embedding(xword2int, word2int, embeddings)
+embeddings = 0.001 * get_new_embedding(xword2int, word2int, embeddings)
 # gen = generate_batch_embed(int_words, batch_size, skip_window)
 gen = generate_batch_embed_v2(int_words, embeddings, batch_size, skip_window)
 # gen = generate_batch_input_dense(int_words, embeddings, batch_size, skip_window, embedding_size)
@@ -87,7 +86,8 @@ with graph.as_default():
                           num_sampled=5,
                           batch_size=batch_size,
                           unigrams=unigrams)
-
+    model.total_epoches = 10
+    model.total_words = len(int_words)
 trainer = Trainer(train_name="newdense")
 
 

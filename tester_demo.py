@@ -107,7 +107,7 @@ with tf.Session(graph=graph) as session:
         # embeddings =  seq_emb / seq_norm + embeddings/em_norm
         # embeddings = embeddings + 0.033 * seq_emb
         # cons, tars = model.get_embedding(session, seq_emb)
-        embeddings_normal = normalize(embed)
+        embeddings_normal = normalize(embeddings)
         # for kki in range(0, batch_size)
         result = tester.evaluate_v2(gensim_model, embeddings_normal)
         result['average'] = (result['semantic'] + result['syntactic']) / 2

@@ -12,6 +12,10 @@ class Word2VecDense:
         self.batch_size = batch_size
         self.num_sampled = num_sampled
         self.unigrams = unigrams
+        self.learning_rate = 0.025
+        self.word_count = 0
+        self.total_words = 0
+        self.total_epoches = 0
         self.build()
         # self._forward()
 
@@ -29,7 +33,9 @@ class Word2VecDense:
                 shape=[self.batch_size, 1], dtype=tf.int32)
             self.seq_encoding = tf.placeholder(
                 shape=[self.batch_size, 50], dtype=tf.float32)
+            self.lr = tf.placeholder(tf.float32, shape=[])
             # print(self.context_word.get_shape())
+
     def _create_embedding(self):
         with tf.device('/GPU:0'):
             # Look up embeddings for inputs.
@@ -38,11 +44,11 @@ class Word2VecDense:
                 self.embeddings = tf.Variable(
                     tf.random_normal([self.vocab_size, self.embedding_size],
                                      -init_width, init_width, dtype=np.float32), dtype=tf.float32)
-                self.embedx = tf.nn.embedding_lookup(
+                self.embed = tf.nn.embedding_lookup(
                     self.embeddings, self.context_word)
-                x = tf.concat([self.embedx, self.seq_encoding], axis=1)
-                x = tf.layers.dense(x, self.embedding_size, activation=tf.nn.relu)
-                self.embed = tf.layers.dense(x, self.embedding_size)
+                # x = tf.concat([self.embed, self.seq_encoding], axis=1)
+                # x = tf.layers.dense(x, self.embedding_size, activation=tf.nn.tanh)
+                # self.embed = tf.layers.dense(x, self.embedding_size)
 
             # Construct the variables for the NCE loss
             with tf.name_scope('final_layer'):
@@ -80,7 +86,7 @@ class Word2VecDense:
     def _create_optimizer(self):
         with tf.name_scope('optimizer'):
             self.optimizer = tf.train.GradientDescentOptimizer(
-                0.1).minimize(self.loss)
+                self.lr).minimize(self.loss)
 
     def get_embedding(self):
         return self.embeddings.eval()
@@ -98,17 +104,20 @@ class Word2VecDense:
         return embeds
 
     def train_once(self, session, batch_data):
-
+        lr = max(0.0001, self.learning_rate * (1 -
+                                               (self.word_count / (self.total_epoches * self.total_words))))
         batch_contexts, batch_targets, batch_seq_encoding = batch_data
         feed_dict = {self.context_word: batch_contexts,
                      self.target_word: batch_targets,
-                     self.seq_encoding: batch_seq_encoding}
-
+                     self.seq_encoding: batch_seq_encoding,
+                     self.lr: lr}
+        
         loss_val, _ = session.run(
             [self.loss, self.optimizer],
             feed_dict=feed_dict)
-
+        self.word_count += len(batch_contexts)
         result = {
-            "em_loss": loss_val
+            "em_loss": loss_val,
+            "lr": lr
         }
         return result

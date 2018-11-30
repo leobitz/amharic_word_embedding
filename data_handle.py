@@ -224,7 +224,7 @@ def generate_batch_embed_v2(data, embeddings, batch_size, skip_window):
     """
     assert batch_size % skip_window == 0
     ci = skip_window  # current_index
-    embeddings = normalize(embeddings)
+    # embeddings = normalize(embeddings)
     while True:
         batch_inputs = np.ndarray(shape=(batch_size), dtype=np.int32)
         batch_labels = np.ndarray(shape=(batch_size, 1), dtype=np.int32)
@@ -238,11 +238,9 @@ def generate_batch_embed_v2(data, embeddings, batch_size, skip_window):
             target = context.pop(skip_window)
             # context = random.sample(context, skip_window * 2)
             # context = np.random.choice(context, skip_window, replace=False)
-            batch_embeddings[batch_index:batch_index +
-                             win] = embeddings[context]
-            batch_inputs[batch_index:batch_index +
-                         win] = context
-            batch_labels[batch_index:batch_index + win, 0] = target
+            batch_embeddings[batch_index:batch_index + win] = embeddings[target]
+            batch_inputs[batch_index:batch_index + win] = target
+            batch_labels[batch_index:batch_index + win, 0] = context
             ci += 1
         if len(data) - ci - skip_window < batch_size:
             ci = skip_window
