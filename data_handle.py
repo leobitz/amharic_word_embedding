@@ -50,19 +50,19 @@ def ns_sample(word2freq, word2int, int2word, rate):
     returns the negative sampling distribution
 
     """
-    unigrams = np.array([word2freq[int2word[i]]
-                         for i in range(len(word2freq))])
-    unigrams = np.power(unigrams, rate)
-    unigrams = unigrams / np.sum(unigrams)
-    unigrams = unigrams / np.min(unigrams)
-    unigrams = np.round(unigrams).astype(np.int32)
-    final = []
-    for i in range(len(word2freq)):
-        word = int2word[i]
-        word_int = word2int[word]
-        for j in range(unigrams[i]):
-            final.append(word_int)
-    return final
+    unigrams = np.array(list(word2freq.values()), dtype=np.float32)
+    # unigrams = np.power(unigrams, rate)
+    table = []
+    p = 0
+    i = 0
+    total_p = unigrams.sum()
+    for word in word2freq.keys():
+        count = word2freq[word]
+        p += float(pow(count, rate) / total_p)
+        while (float(i) / total_p) < p:
+            table.append(word2int[word])
+            i += 1
+    return table
 
 
 def min_count_threshold(words, min_count=5):

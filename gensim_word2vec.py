@@ -84,14 +84,23 @@ for i_params in range(len(init)):
                                    workers=10
                                    )
     result = model.accuracy('data/analogies.txt', restrict_vocab=len(model.wv.vocab))
-    s = ""   
-    for row in result[1]['correct']:
-        s += str(row) + "\n"
-    open('results/corrects2.txt', mode='w', encoding='utf-8').write(s)
-    s = ""   
-    for row in result[1]['incorrect']:
-        s += str(row) + "\n"
-    open('results/incorrect2.txt', mode='w', encoding='utf-8').write(s)
+    actual_result = {}
+    for i in range(result):
+        section = result[i]['section']
+        correct = len(result[i]['correct'])
+        incorrect = len(result[i]['incorrect'])
+        total = correct + incorrect
+        actual_result[section] = correct * 100.0/total
+    
+
+    # s = ""   
+    # for row in result[1]['correct']:
+    #     s += str(row) + "\n"
+    # open('results/corrects2.txt', mode='w', encoding='utf-8').write(s)
+    # s = ""   
+    # for row in result[1]['incorrect']:
+    #     s += str(row) + "\n"
+    # open('results/incorrect2.txt', mode='w', encoding='utf-8').write(s)
     # analogy_result = calc_analogy_accuracy(result)
     # pick_one_out = round(anomaly(model), 3)
     # analogy_result['semantic_pick'] = pick_one_out

@@ -34,22 +34,26 @@ class GensimWrapper:
         return correct * 100 / len(lines)
 
     def evaluate_semantic_analogy(self):
-        result = self.model.wv.accuracy('data/semantic.txt', restrict_vocab=len(self.model.wv.vocab))
+        result = self.model.wv.accuracy('data/newan.txt', restrict_vocab=len(self.model.wv.vocab), case_insensitive=False)
         return result
 
     def evaluate_synatctic_analogy(self):
-        result = self.model.wv.accuracy('data/syntax.txt', restrict_vocab=len(self.model.wv.vocab))
+        result = self.model.wv.accuracy('data/syntax.txt', restrict_vocab=len(self.model.wv.vocab), case_insensitive=False)
         return result
 
     def evaluate(self):
         anomaly = self.evaluate_anomaly()
         semantic = self.evaluate_semantic_analogy()[0]
-        syntactic = self.evaluate_synatctic_analogy()[0]
-        semantic = len(semantic['correct']) * 100 / (len(semantic['correct']) + len(semantic['incorrect']))
-        syntactic = len(syntactic['correct']) * 100 / (len(syntactic['correct']) + len(syntactic['incorrect']))
-        evaluation = {"anomaly": anomaly,
-                      "semantic": semantic, "syntactic": syntactic}
-        return evaluation
+        result = self.model.wv.accuracy('data/newan2.txt', restrict_vocab=len(self.model.wv.vocab), case_insensitive=False)
+        actual_result = {}
+        for i in range(len(result)):
+            section = result[i]['section']
+            correct = len(result[i]['correct'])
+            incorrect = len(result[i]['incorrect'])
+            total = correct + incorrect
+            actual_result[section] = correct * 100.0/total
+        actual_result['pick-one-out'] = anomaly
+        return actual_result
 
     def set_embeddings(self, word2int, embeddings):
         """Transfers the word embedding learned bu tensorflow to gensim model
