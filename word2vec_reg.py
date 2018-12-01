@@ -112,12 +112,16 @@ class Word2VecReg:
                      self.train_labels: batch_labels,
                      self.reg_labels: batch_reg_labels}
 
-        loss_val, _,  reg_loss_val, _ = session.run(
-            [self.loss, self.optimizer, self.reg_loss, self.reg_optimizer],
+        loss_val, _ = session.run(
+            [self.loss, self.optimizer],
             feed_dict=feed_dict)
+        
+        # loss_val, _,  reg_loss_val, _ = session.run(
+        #     [self.loss, self.optimizer, self.reg_loss, self.reg_optimizer],
+        #     feed_dict=feed_dict)
 
         result = {
             "em_loss": loss_val,
-            "reg_loss": reg_loss_val
+            # "reg_loss": reg_loss_val
         }
         return result

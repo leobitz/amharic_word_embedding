@@ -96,7 +96,7 @@ with tf.Session(graph=graph) as session:
         seq_emb = get_new_embedding(xword2int, word2int, seq_emb)
         inputs = np.array(list(word2int.values()), dtype=np.int32)
         embeddings = tester.restore(model_name)
-        embed = model.get_embed_2(session, seq_emb[inputs], inputs)
+        # embed = model.get_embed_2(session, seq_emb[inputs], inputs)
         # cons, tars = tester.restore(model_name, seq_emb)
         # embeddings = np.concatenate([embeddings, .0357 * seq_emb], axis=1)
         # seq_norm = np.mean(np.linalg.norm(embeddings))

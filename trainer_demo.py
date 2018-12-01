@@ -56,8 +56,8 @@ int_words = words_to_ints(word2int, words)
 print("Final train data: {0}".format(len(words)))
 embeddings = np.load("results/seq_encoding.npy")
 embeddings = 0.001 * get_new_embedding(xword2int, word2int, embeddings)
-# gen = generate_batch_embed(int_words, batch_size, skip_window)
-gen = generate_batch_embed_v2(int_words, embeddings, batch_size, skip_window)
+gen = generate_batch_embed(int_words, batch_size, skip_window)
+# gen = generate_batch_embed_v2(int_words, embeddings, batch_size, skip_window)
 # gen = generate_batch_input_dense(int_words, embeddings, batch_size, skip_window, embedding_size)
 # gen = generate_batch_rnn_v2(
 #     int_words, int2word, char2int, batch_size, skip_window, n_chars, n_features)
@@ -69,26 +69,26 @@ with graph.as_default():
     #                        num_sampled=5,
     #                        batch_size=batch_size,
     #                        unigrams=unigrams)
-    # model = Word2Vec2(vocab_size=vocab_size,
-    #                   n_chars=n_chars,
-    #                   n_features=n_features,
+    model = Word2Vec(vocab_size=vocab_size,
+                    #   n_chars=n_chars,
+                    #   n_features=n_features,
+                      embed_size=embedding_size,
+                      num_sampled=5,
+                      batch_size=batch_size,
+                      unigrams=unigrams)
+    # model = Word2VecReg(vocab_size=vocab_size,
     #                   embed_size=embedding_size,
     #                   num_sampled=5,
     #                   batch_size=batch_size,
     #                   unigrams=unigrams)
-    # model = Word2VecReg(vocab_size=vocab_size,
-    #                   embed_size=embedding_size,
-    #                   num_sampled=10,
-    #                   batch_size=batch_size,
-    #                   unigrams=unigrams)
-    model = Word2VecDense(vocab_size=vocab_size,
-                          embed_size=embedding_size,
-                          num_sampled=5,
-                          batch_size=batch_size,
-                          unigrams=unigrams)
+    # model = Word2VecDense(vocab_size=vocab_size,
+    #                       embed_size=embedding_size,
+    #                       num_sampled=5,
+    #                       batch_size=batch_size,
+    #                       unigrams=unigrams)
     model.total_epoches = 10
     model.total_words = len(int_words)
-trainer = Trainer(train_name="newdense")
+trainer = Trainer(train_name="mergeed")
 
 
 session = trainer.train(graph=graph,

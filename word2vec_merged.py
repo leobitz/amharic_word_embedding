@@ -12,6 +12,10 @@ class Word2VecMerged:
         self.num_sampled = num_sampled
         self.unigrams = unigrams
         self.build()
+        self.learning_rate = 0.025
+        self.word_count = 0
+        self.total_words = 0
+        self.total_epoches = 0
 
     def build(self):
         self._create_placeholders()
@@ -23,8 +27,8 @@ class Word2VecMerged:
                 tf.int32, shape=[self.batch_size])
             self.train_labels = tf.placeholder(
                 tf.int32, shape=[self.batch_size])
+            self.lr = tf.placeholder(tf.float32, shape=[])
 
-   
     def _forward(self):
         """Build the graph for the forward pass."""
 
@@ -110,14 +114,8 @@ class Word2VecMerged:
 
         # Optimizer nodes.
         # Linear learning rate decay.
-
-        words_to_train = 4089439
-        lr = 0.025 * tf.maximum(0.0001, 1.0 - 280000 / words_to_train)
-        self._lr = lr
-        optimizer = tf.train.GradientDescentOptimizer(lr)
-        train = optimizer.minimize(loss,
-                                   global_step=self.global_step,
-                                   gate_gradients=optimizer.GATE_NONE)
+        optimizer = tf.train.GradientDescentOptimizer(self.lr)
+        train = optimizer.minimize(loss)
         self.optimizer = train
 
     def _create_graph(self):
@@ -134,14 +132,18 @@ class Word2VecMerged:
 
     def train_once(self, session, batch_data):
         batch_inputs, batch_labels = batch_data
+        lr = max(0.0001, self.learning_rate * (1 -
+                                               (self.word_count / (self.total_epoches * self.total_words))))
         feed_dict = {self.train_inputs: batch_inputs,
-                     self.train_labels: batch_labels.flatten()}
+                     self.train_labels: batch_labels.flatten(),
+                     self.lr: lr}
 
         loss_val, _ = session.run(
             [self.loss, self.optimizer],
             feed_dict=feed_dict)
-
+        self.word_count += len(batch_contexts)
         result = {
-            "em_loss": loss_val
+            "em_loss": loss_val,
+            "lr": lr
         }
         return result
