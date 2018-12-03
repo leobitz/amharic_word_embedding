@@ -14,6 +14,7 @@ class Net(nn.Module):
                  neg_dist=None,
                  neg_samples=5,
                  lr=0.025,
+                 seq_encoding=None,
                  device='cpu'):
         super(Net, self).__init__()
         self.embed_size = embed_size
@@ -25,21 +26,37 @@ class Net(nn.Module):
         x = [np.random.uniform(-init_width, init_width,
                                (vocab_size, embed_size)) for i in range(2)]
         self.device = t.device(device)
-        # self.WI = t.tensor(x[0], device=device, requires_grad=True)
-        # self.WO = t.tensor(x[0], device=device, requires_grad=True)
+        if seq_encoding is not None:
+            self.seq_embed = nn.Embedding(
+                seq_encoding.shape[0], seq_encoding.shape[1])
+            self.seq_embed.to(device=device, dtype=t.float64)
+            self.seq_embed.weight.data.copy_(
+                t.from_numpy(seq_encoding))
+            self.seq_embed.weight.requires_grad = False
+
         self.WI = nn.Embedding(vocab_size, embed_size, sparse=True)
         self.WI.to(device=device, dtype=t.float64)
         self.WI.weight.data.uniform_(-init_width, init_width)
         self.WO = nn.Embedding(vocab_size, embed_size, sparse=True)
         self.WO.to(device=device, dtype=t.float64)
         self.WO.weight.data.uniform_(-init_width, init_width)
+        if device == 'cuda':
+            self.fc1 = nn.Linear(
+                (embed_size + seq_embed.shape[1]), embed_size).cuda().double()
+        else:
+            self.fc1 = nn.Linear(
+                (embed_size + seq_embed.shape[1]), embed_size).double()
 
     def forward(self, x, y):
         x_lookup, y_lookup, neg_lookup = self.prepare_inputs(x, y)
 
-        vI = self.WI(x_lookup)  # .view((-1, ))
-        vO = self.WO(y_lookup)  # .view((-1))
-        samples = self.WO(neg_lookup)  # .view((-1, 5))
+        vI = self.WI(x_lookup)
+        vO = self.WO(y_lookup)
+        samples = self.WO(neg_lookup)
+        seqI = self.seq_embed(x_lookup)
+
+        vI = t.cat((vI, seqI), 2)
+        vI = self.fc1(vI)
 
         pos_z = t.mul(vO, vI).squeeze()
         pos_score = t.sum(pos_z, dim=1)
@@ -51,21 +68,40 @@ class Net(nn.Module):
         loss = t.mean(loss)
         return loss
 
+    def get_embedding(self, x):
+        x_lookup = t.tensor([x], dtype=t.long, device=self.device)
+        vI = self.WI(x_lookup)
+        seqI = self.seq_embed(x_lookup)
+        vI = t.cat((vI, seqI), 2)
+        vI = self.fc1(vI)
+        return vI.detach().numpy().reshape((-1, self.embed_size))
+
     def prepare_inputs(self, x, y):
         x_lookup = t.tensor([x], dtype=t.long, device=self.device)
         y_lookup = t.tensor([y], dtype=t.long, device=self.device)
         neg_indexes = np.random.randint(
-            0, len(self.neg_dist), size=(len(x), self.neg_samples))  # .flatten()
-        neg_indexes = self.neg_dist[neg_indexes]  # .reshape((-1, 5)).tolist()
+            0, len(self.neg_dist), size=(len(x), self.neg_samples))
+        neg_indexes = self.neg_dist[neg_indexes]
         neg_lookup = t.tensor(neg_indexes, dtype=t.long, device=self.device)
         return x_lookup, y_lookup, neg_lookup
 
     def save_embedding(self, word2int, file_name, device):
+        file = open(file_name + '_', encoding='utf8', mode='w')
+        file.write("{0} {1}\n".format(len(word2int), self.embed_size))
+        with t.no_grad():
+            xs = list(word2int.values())
+            es = self.get_embedding(xs)
+            for word, index in word2int.items():
+                e = es[index]
+                e = ' '.join(map(lambda x: str(x), e))
+                file.write("{0} {1}\n".format(word, e))
+        file.close()
+
         if device == 'cpu':
             embedding = self.WI.weight.data.numpy()
         else:
             embedding = self.WI.weight.cpu().data.numpy()
-        print(embedding.shape)
+
         file = open(file_name, encoding='utf8', mode='w')
         file.write("{0} {1}\n".format(len(word2int), self.embed_size))
         for word, index in word2int.items():
@@ -95,10 +131,28 @@ def generateSG(data, skip_window, batch_size, start=0, end=-1):
         yield batch_input, batch_output
 
 
+def get_new_embedding(oldw2i, neww2i, embeddings):
+    new_em = np.ndarray((len(neww2i), embeddings.shape[1]), dtype=np.float32)
+    for key in neww2i:
+        if key != "<unk>":
+            index = oldw2i[key]
+            em = embeddings[index]
+            new_em[neww2i[key]] = em
+    new_em[0] = np.random.rand(50)
+    return new_em
+
+
+seq_embed = np.load('results/seq_encoding.npy')
+
 words = read_file()
+xvocab, xword2int, xint2word = build_vocab(words)
 words, word2freq = min_count_threshold(words)
-# words = subsampling(words, 1e-3)
+
 vocab, word2int, int2word = build_vocab(words)
+word2freq = get_frequency(words, word2int, int2word)
+
+seq_embed = get_new_embedding(xword2int, word2int, seq_embed)
+seq_embed = normalize(seq_embed)
 print("Words to train: ", len(words))
 print("Vocabs to train: ", len(vocab))
 print("Unk count: ", word2freq['<unk>'])
@@ -108,13 +162,15 @@ int_words = np.array(int_words, dtype=np.int32)
 n_epoch = 5
 batch_size = 10
 skip_window = 1
-init_lr = .5
+init_lr = .1
+device = 'cpu'
 gen = generateSG(list(int_words), skip_window, batch_size)
 
 ns_unigrams = np.array(
     ns_sample(word2freq, word2int, int2word, .75), dtype=np.int32)
 
-net = Net(neg_dist=ns_unigrams, vocab_size=len(vocab), device='cpu')
+net = Net(neg_dist=ns_unigrams, seq_encoding=seq_embed,
+          vocab_size=len(vocab), device=device)
 sgd = optimizers.SGD(net.parameters(), lr=init_lr)
 start = time.time()
 losses = []
@@ -122,7 +178,9 @@ grad_time = []
 forward_time = []
 backward_time = []
 step_time = []
-steps_per_epoch = (len(int_words) * skip_window) // batch_size
+window = skip_window * 2
+steps_per_epoch = (len(int_words) * window) // batch_size
+start_time = time.time()
 for i in range(steps_per_epoch * n_epoch):
     sgd.zero_grad()
     x, y = next(gen)
@@ -131,11 +189,13 @@ for i in range(steps_per_epoch * n_epoch):
     sgd.step()
     n_words = i * batch_size
     lr = max(.0001, init_lr * (1.0 - n_words /
-                               (len(int_words) * skip_window * n_epoch)))
+                               (len(int_words) * window * n_epoch)))
     for param_group in sgd.param_groups:
         param_group['lr'] = lr
     losses.append(out.detach().cpu().numpy())
-    if i % steps_per_epoch == 0:
+    if i % (steps_per_epoch ) == 0:
         print(np.mean(losses), lr)
+        print(time.time() - start_time)
+        start_time = time.time()
         losses = []
-net.save_embedding(word2int, "results/w2v_plain_torch.txt", 'cpu')
+net.save_embedding(word2int, "results/w2v_torch.txt", device)
