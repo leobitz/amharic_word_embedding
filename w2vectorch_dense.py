@@ -9,7 +9,7 @@ from data_handle import *
 
 class Net(nn.Module):
 
-    def __init__(self, embed_size=75,
+    def __init__(self, embed_size=100,
                  vocab_size=10000,
                  neg_dist=None,
                  neg_samples=5,
@@ -60,8 +60,8 @@ class Net(nn.Module):
         seqI = self.seq_embed(x_lookup)
 
         seqI = self.fc1(seqI)
-        vI = t.cat((vI, seqI), 2)
-        vI = self.fc2(vI)
+        vO = t.cat((vO, seqI), 2)
+        vO = self.fc2(vO)
 
         pos_z = t.mul(vO, vI).squeeze()
         pos_score = t.sum(pos_z, dim=1)
@@ -144,11 +144,11 @@ def get_new_embedding(oldw2i, neww2i, embeddings):
             index = oldw2i[key]
             em = embeddings[index]
             new_em[neww2i[key]] = em
-    new_em[0] = np.random.rand(50)
+    new_em[0] = np.random.rand(100)
     return new_em
 
 
-seq_embed = np.load('results/seq_encoding.npy')
+seq_embed = np.load('results/seq_best.npy')
 
 words = read_file()
 xvocab, xword2int, xint2word = build_vocab(words)
@@ -165,7 +165,7 @@ print("Unk count: ", word2freq['<unk>'])
 int_words = words_to_ints(word2int, words)
 int_words = np.array(int_words, dtype=np.int32)
 
-n_epoch = 5
+n_epoch = 3
 batch_size = 10
 skip_window = 1
 init_lr = .1
@@ -187,7 +187,8 @@ step_time = []
 window = skip_window * 2
 steps_per_epoch = (len(int_words) * window) // batch_size
 start_time = time.time()
-for i in range(steps_per_epoch * n_epoch):
+total_steps = steps_per_epoch * n_epoch
+for i in range(total_steps):
     sgd.zero_grad()
     x, y = next(gen)
     out = net.forward(x, y)
@@ -199,9 +200,10 @@ for i in range(steps_per_epoch * n_epoch):
     for param_group in sgd.param_groups:
         param_group['lr'] = lr
     losses.append(out.detach().cpu().numpy())
-    if i % (steps_per_epoch) == 0:
-        print(np.mean(losses), lr)
-        print(time.time() - start_time)
+    if i % (steps_per_epoch // 10) == 0:
+        s = "Loss: {0:.4f} lr: {0:.4f} Time Left: {2:.2f}"
+        span = (time.time() - start_time)
+        print(s.format(np.mean(losses), lr, span))
         start_time = time.time()
         losses = []
 net.save_embedding(word2int, "results/w2v_torch.txt", device)

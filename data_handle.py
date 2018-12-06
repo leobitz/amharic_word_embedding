@@ -707,7 +707,9 @@ def evaluate(word2int, embeddings):
     return result
 
 
-def generate_for_char_langauge(words, int_words, int2word, char2tup, batch_size=100, n_chars=13, n_consonant=40, n_vowels=10, seq_length=5):
+def generate_for_char_langauge(words, int_words, int2word, char2tup, 
+                                batch_size=100, n_chars=13, n_consonant=40, 
+                                n_vowels=10, seq_length=5):
     """
 
     returns cbow input of integer sequence of words. the inputs are for RNN where the context, is normal
