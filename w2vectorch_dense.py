@@ -57,15 +57,19 @@ class Net(nn.Module):
         vI = self.WI(x_lookup)
         vO = self.WO(y_lookup)
         samples = self.WO(neg_lookup)
-        seqI = self.seq_embed(x_lookup)
+
+        # seqI = self.seq_embed(x_lookup)
+        seqO = self.seq_embed(y_lookup)
         neg_seq = self.seq_embed(neg_lookup)
+
         samples = self.fc1(samples)
-        seqI = self.fc1(seqI)
+        # seqI = self.fc1(seqI)
+        seqO = self.fc1(seqO)
 
         samples = t.cat((samples, neg_seq), 2)
-        vO = t.cat((vO, seqI), 2)
-        vI = t.cat((vI, seqI), 2)
-        vI = self.fc2(vI)
+        vO = t.cat((vO, seqO), 2)
+        # vI = t.cat((vI, seqI), 2)
+        # vI = self.fc2(vI)
         vO = self.fc2(vO)
         samples = self.fc2(samples)
 
@@ -171,7 +175,7 @@ print("Unk count: ", word2freq['<unk>'])
 int_words = words_to_ints(word2int, words)
 int_words = np.array(int_words, dtype=np.int32)
 
-n_epoch = 1
+n_epoch = 2
 batch_size = 10
 skip_window = 1
 init_lr = .1
