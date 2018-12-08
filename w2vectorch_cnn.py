@@ -24,24 +24,45 @@ class Net(nn.Module):
         init_width = 0.5 / embed_size
         x = [np.random.uniform(-init_width, init_width,
                                (vocab_size, embed_size)) for i in range(2)]
+        if device == 'gpu': device = 'cuda'
         self.device = t.device(device)
-        self.layer1 = nn.Sequential(
-            nn.Conv2d(1, 16, kernel_size=5, stride=1, padding=2).double(),
-            nn.ReLU(),
-            nn.MaxPool2d(kernel_size=3)
-        )
-        self.fc1 = nn.Linear(16 * 4 * 16, embed_size).double()
+
+        self.WI = nn.Embedding(vocab_size, embed_size, sparse=True)
+        self.WI.to(device=device, dtype=t.float64)
+        self.WI.weight.data.uniform_(-init_width, init_width)
         self.WO = nn.Embedding(vocab_size, embed_size, sparse=True)
         self.WO.to(device=device, dtype=t.float64)
         self.WO.weight.data.uniform_(-init_width, init_width)
+        if device == 'cuda':
+            self.fc1 = nn.Linear(16 * 4 * 16, embed_size).cuda().double()
+            self.layer1 = nn.Sequential(
+                nn.Conv2d(1, 16, kernel_size=5, stride=1,
+                          padding=2).cuda().double(),
+                nn.ReLU(),
+                nn.MaxPool2d(kernel_size=3)
+            )
+            self.fc2 = nn.Linear(embed_size * 2, embed_size).cuda().double()
+            self.fc3 = nn.Linear(embed_size, embed_size).cuda().double()
+        else:
+            self.fc1 = nn.Linear(16 * 4 * 16, embed_size).double()
+            self.layer1 = nn.Sequential(
+                nn.Conv2d(1, 16, kernel_size=5, stride=1, padding=2).double(),
+                nn.ReLU(),
+                nn.MaxPool2d(kernel_size=3)
+            )
+            self.fc2 = nn.Linear(embed_size * 2, embed_size).double()
+            self.fc3 = nn.Linear(embed_size, embed_size).double()
 
     def forward(self, word_image, x, y):
-        word_image, y_lookup, neg_lookup = self.prepare_inputs(word_image, y)
+        word_image, x_lookup, y_lookup, neg_lookup = self.prepare_inputs(word_image,x, y)
         input_x = self.layer1(word_image).view(len(y), -1)
-
-        vI = self.fc1(input_x)
+        seqI = F.relu(self.fc1(input_x))
+        seqI = self.fc3(seqI)
+        vI = self.WI(x_lookup)
         vO = self.WO(y_lookup)
         samples = self.WO(neg_lookup)
+        vI = t.cat((seqI, vI), 1)
+        vI = self.fc2(vI)
 
         pos_z = t.mul(vO, vI).squeeze()
         vI = vI.unsqueeze(2).view(len(x), self.embed_size, 1)
@@ -53,22 +74,29 @@ class Net(nn.Module):
 
         loss = -pos_score - t.sum(neg_score)
         loss = t.mean(loss)
-
         return loss
 
-    def prepare_inputs(self, image, y):
+    def prepare_inputs(self, image, x, y):
         word_image = t.tensor(image, dtype=t.double, device=self.device)
-        y_lookup = t.tensor([y], dtype=t.long, device=self.device)
+        y_lookup = t.tensor(y, dtype=t.long, device=self.device)
+        x_lookup = t.tensor(x, dtype=t.long, device=self.device)
         neg_indexes = np.random.randint(
             0, len(self.neg_dist), size=(len(y), self.neg_samples))  # .flatten()
         neg_indexes = self.neg_dist[neg_indexes]  # .reshape((-1, 5)).tolist()
         neg_lookup = t.tensor(neg_indexes, dtype=t.long, device=self.device)
-        return word_image, y_lookup, neg_lookup
+        return word_image, x_lookup, y_lookup, neg_lookup
 
-    def get_embedding(self, image):
-        word_images = t.tensor(image, dtype=t.double, device=self.device)
-        input_x = self.layer1(word_images).view(1, -1)
-        vI = self.fc1(input_x)
+    def get_embedding(self, image, x):
+        word_image = t.tensor(image, dtype=t.double, device=self.device)
+        x_lookup = t.tensor(x, dtype=t.long, device=self.device)
+        input_x = self.layer1(word_image).view(1, -1)
+        seqI = F.relu(self.fc1(input_x))
+        seqI = self.fc3(seqI)
+
+        vI = self.WI(x_lookup)
+
+        vI = t.cat((seqI, vI), 1)
+        vI = self.fc2(vI)
         embeddings = vI.detach().numpy()
         return embeddings
 
@@ -129,9 +157,9 @@ gen = generateSG(list(int_words), skip_window, batch_size,
 
 ns_unigrams = np.array(
     ns_sample(word2freq, word2int, int2word, .75), dtype=np.int32)
-
+device = 'cpu'
 net = Net(neg_dist=ns_unigrams, embed_size=100,
-          vocab_size=len(vocab), device='cpu')
+          vocab_size=len(vocab), device=device)
 sgd = optimizers.SGD(net.parameters(), lr=init_lr)
 start = time.time()
 losses = []
@@ -145,7 +173,7 @@ for i in range(steps_per_epoch * n_epoch):
     sgd.zero_grad()
     x1, x2, y = next(gen)
     out = net.forward(x2, x1, y)
-    out.backward()
+    out.backward() 
     sgd.step()
     n_words = i * batch_size
     lr = max(.0001, init_lr * (1.0 - n_words /
@@ -153,12 +181,11 @@ for i in range(steps_per_epoch * n_epoch):
     for param_group in sgd.param_groups:
         param_group['lr'] = lr
     losses.append(out.detach().cpu().numpy())
-    if i % (steps_per_epoch // 2) == 0:
+    if i % (steps_per_epoch // 10) == 0:
         s = "Loss: {0:.4f} lr: {1:.4f} Time Left: {2:.2f}"
         span = (time.time() - start_time)
         print(s.format(np.mean(losses), lr, span))
         start_time = time.time()
-        break
 
 del word2int['<unk>']
 vocab = list(word2int.keys())
@@ -169,9 +196,9 @@ for i in range(len(vocab)):
         char2tup, word, n_chars, n_consonant, n_vowel)
     word_mat = np.concatenate([con_mat, vow_mat], axis=1).reshape(
         (1, 1, n_chars, (n_consonant + n_vowel)))
-    y = [1]
-    em_row = net.get_embedding(word_mat)
+    x_index = word2int[word]
+    em_row = net.get_embedding(word_mat, [x_index])
     embed_dict[word] = em_row.reshape((-1,))
- 
 
-net.save_embedding(embed_dict, "results/w2v_cnn.txt", 'cpu')
+
+net.save_embedding(embed_dict, "results/w2v_cnn.txt", device)
