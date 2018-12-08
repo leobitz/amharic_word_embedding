@@ -5,12 +5,13 @@ import collections
 
 class GensimWrapper:
 
-    def __init__(self, file="data/all.txt", embed_size=128, iter=5, log=False):
+    def __init__(self, file="data/all.txt", test_file='data/newan2.txt', embed_size=128, iter=5, log=False):
         if log:
             logging.basicConfig(
                 format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
         self.embed_size = embed_size
         self.iter = iter
+        self.test_file = test_file
         self._prepare_data(file)
         self._create_model()
 
@@ -33,26 +34,18 @@ class GensimWrapper:
                 correct += 1
         return correct * 100 / len(lines)
 
-    def evaluate_semantic_analogy(self):
-        result = self.model.wv.accuracy('data/newan.txt', restrict_vocab=len(self.model.wv.vocab), case_insensitive=False)
-        return result
-
-    def evaluate_synatctic_analogy(self):
-        result = self.model.wv.accuracy('data/syntax.txt', restrict_vocab=len(self.model.wv.vocab), case_insensitive=False)
-        return result
-
     def evaluate(self):
-        anomaly = self.evaluate_anomaly()
-        semantic = self.evaluate_semantic_analogy()[0]
-        result = self.model.wv.accuracy('data/newan2.txt', restrict_vocab=len(self.model.wv.vocab), case_insensitive=False)
+        # anomaly = self.evaluate_anomaly()
+        result = self.model.wv.accuracy(self.test_file, restrict_vocab=len(
+            self.model.wv.vocab), case_insensitive=False)
         actual_result = {}
         for i in range(len(result)):
             section = result[i]['section']
             correct = len(result[i]['correct'])
             incorrect = len(result[i]['incorrect'])
             total = correct + incorrect
-            actual_result[section] = correct * 100.0/total
-        actual_result['pick-one-out'] = anomaly
+            actual_result[section] = correct * 100.0 / total
+        # actual_result['pick-one-out'] = anomaly
         return actual_result
 
     def set_embeddings(self, word2int, embeddings):

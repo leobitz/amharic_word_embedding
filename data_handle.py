@@ -701,9 +701,9 @@ def subsampling(int_words, threshold=1e-5):
 
 
 def evaluate(word2int, embeddings):
-    gensim = GensimWrapper(embeddings.shape[1], 0, log=False)
-    gensim.set_embeddings(word2int, embeddings)
-    result = gensim.evaluate()
+    gensimw = GensimWrapper(embeddings.shape[1], 0, log=False)
+    gensimw.set_embeddings(word2int, embeddings)
+    result = gensimw.evaluate()
     return result
 
 
