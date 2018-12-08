@@ -148,8 +148,8 @@ print("Unk count: ", word2freq['<unk>'])
 int_words = words_to_ints(word2int, words)
 int_words = np.array(int_words, dtype=np.int32)
 n_chars = 11 + 2
-n_epoch = 1
-batch_size = 10
+n_epoch = 3
+batch_size = 5
 skip_window = 1
 init_lr = .1
 gen = generateSG(list(int_words), skip_window, batch_size,
