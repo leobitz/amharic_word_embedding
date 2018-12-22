@@ -5,7 +5,7 @@ import collections
 
 class GensimWrapper:
 
-    def __init__(self, file="data/all.txt", test_file='data/newan2.txt', embed_size=128, iter=5, log=False):
+    def __init__(self, file="data/news.txt", test_file='data/newan2.txt', embed_size=128, iter=5, log=False):
         if log:
             logging.basicConfig(
                 format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
@@ -35,7 +35,7 @@ class GensimWrapper:
         return correct * 100 / len(lines)
 
     def evaluate(self):
-        # anomaly = self.evaluate_anomaly()
+        anomaly = self.evaluate_anomaly()
         result = self.model.wv.accuracy(self.test_file, restrict_vocab=len(
             self.model.wv.vocab), case_insensitive=False)
         actual_result = {}
@@ -45,7 +45,7 @@ class GensimWrapper:
             incorrect = len(result[i]['incorrect'])
             total = correct + incorrect
             actual_result[section] = correct * 100.0 / total
-        # actual_result['pick-one-out'] = anomaly
+        actual_result['pick-one-out'] = anomaly
         return actual_result
 
     def set_embeddings(self, word2int, embeddings):

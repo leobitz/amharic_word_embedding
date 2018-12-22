@@ -10,7 +10,7 @@ np.random.seed(1000)
 
 
 def anomaly(model):
-    lines = open('data/anomaly.txt', encoding='utf-8').readlines()
+    lines = open('data/anomaly_new.txt', encoding='utf-8').readlines()
     correct = 0
     for line in lines:
         vals = line[:-1].split(' ')

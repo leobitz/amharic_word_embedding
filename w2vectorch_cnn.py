@@ -5,6 +5,7 @@ import torch.optim as optimizers
 import numpy as np
 import time
 from data_handle import *
+from torch.autograd import Variable
 
 
 class Net(nn.Module):
@@ -33,10 +34,13 @@ class Net(nn.Module):
         self.WO = nn.Embedding(vocab_size, embed_size, sparse=True)
         self.WO.to(device=device, dtype=t.float64)
         self.WO.weight.data.uniform_(-init_width, init_width)
+        self.alpha = nn.Parameter(t.tensor([1.0], requires_grad=True, device=device, dtype=t.float64))
+        self.beta = nn.Parameter(t.tensor([1.0], requires_grad=True, device=device, dtype=t.float64))
+        n_filters = 10
         if device == 'cuda':
-            self.fc1 = nn.Linear(16 * 4 * 16, embed_size).cuda().double()
+            self.fc1 = nn.Linear(n_filters * 4 * 16, embed_size).cuda().double()
             self.layer1 = nn.Sequential(
-                nn.Conv2d(1, 16, kernel_size=5, stride=1,
+                nn.Conv2d(1, n_filters, kernel_size=5, stride=1,
                           padding=2).cuda().double(),
                 nn.ReLU(),
                 nn.MaxPool2d(kernel_size=3)
@@ -44,25 +48,29 @@ class Net(nn.Module):
             self.fc2 = nn.Linear(embed_size * 2, embed_size).cuda().double()
             self.fc3 = nn.Linear(embed_size, embed_size).cuda().double()
         else:
-            self.fc1 = nn.Linear(16 * 4 * 16, embed_size).double()
+            self.fc1 = nn.Linear(n_filters * 4 * 16, embed_size).double()
             self.layer1 = nn.Sequential(
-                nn.Conv2d(1, 16, kernel_size=5, stride=1, padding=2).double(),
+                nn.Conv2d(1, n_filters, kernel_size=5, stride=1, padding=2).double(),
                 nn.ReLU(),
                 nn.MaxPool2d(kernel_size=3)
             )
-            self.fc2 = nn.Linear(embed_size * 2, embed_size).double()
+            self.fc2 = nn.Linear(embed_size, embed_size).double()
             self.fc3 = nn.Linear(embed_size, embed_size).double()
+
+    def vI_out(self, x_lookup, word_image, batch_size):
+        input_x = self.layer1(word_image).view(batch_size, -1)
+        seqI = self.fc1(input_x)
+        vI = self.WI(x_lookup)
+        vI = self.alpha * vI + self.beta * seqI
+        return vI
 
     def forward(self, word_image, x, y):
         word_image, x_lookup, y_lookup, neg_lookup = self.prepare_inputs(word_image,x, y)
-        input_x = self.layer1(word_image).view(len(y), -1)
-        seqI = F.relu(self.fc1(input_x))
-        seqI = self.fc3(seqI)
-        vI = self.WI(x_lookup)
+        
         vO = self.WO(y_lookup)
         samples = self.WO(neg_lookup)
-        vI = t.cat((seqI, vI), 1)
-        vI = self.fc2(vI)
+
+        vI = self.vI_out(x_lookup, word_image, len(y))
 
         pos_z = t.mul(vO, vI).squeeze()
         vI = vI.unsqueeze(2).view(len(x), self.embed_size, 1)
@@ -89,16 +97,10 @@ class Net(nn.Module):
     def get_embedding(self, image, x):
         word_image = t.tensor(image, dtype=t.double, device=self.device)
         x_lookup = t.tensor(x, dtype=t.long, device=self.device)
-        input_x = self.layer1(word_image).view(1, -1)
-        seqI = F.relu(self.fc1(input_x))
-        seqI = self.fc3(seqI)
-
-        vI = self.WI(x_lookup)
-
-        vI = t.cat((seqI, vI), 1)
-        vI = self.fc2(vI)
+        vI = self.vI_out(x_lookup, word_image, len(x))
         embeddings = vI.detach().numpy()
-        return embeddings
+        vI_w = self.WI(x_lookup).detach().numpy()
+        return embeddings, vI_w
 
     def save_embedding(self, embed_dict, file_name, device):
         file = open(file_name, encoding='utf8', mode='w')
@@ -181,7 +183,8 @@ for i in range(steps_per_epoch * n_epoch):
     for param_group in sgd.param_groups:
         param_group['lr'] = lr
     losses.append(out.detach().cpu().numpy())
-    if i % (steps_per_epoch // 10) == 0:
+    if i % (steps_per_epoch // 3) == 0:
+        print(net.alpha, net.beta)
         s = "Loss: {0:.4f} lr: {1:.4f} Time Left: {2:.2f}"
         span = (time.time() - start_time)
         print(s.format(np.mean(losses), lr, span))
@@ -190,6 +193,7 @@ for i in range(steps_per_epoch * n_epoch):
 del word2int['<unk>']
 vocab = list(word2int.keys())
 embed_dict = {}
+embed_dict_2 = {}
 for i in range(len(vocab)):
     word = vocab[i]
     con_mat, vow_mat = word2vec_seperated(
@@ -197,8 +201,11 @@ for i in range(len(vocab)):
     word_mat = np.concatenate([con_mat, vow_mat], axis=1).reshape(
         (1, 1, n_chars, (n_consonant + n_vowel)))
     x_index = word2int[word]
-    em_row = net.get_embedding(word_mat, [x_index])
-    embed_dict[word] = em_row.reshape((-1,))
+    em_row1, em_row2 = net.get_embedding(word_mat, [x_index])
+    embed_dict[word] = em_row1.reshape((-1,))
+    embed_dict_2[word] = em_row2.reshape((-1,))
 
 
 net.save_embedding(embed_dict, "results/w2v_cnn.txt", device)
+net.save_embedding(embed_dict_2, "results/w2v_cnn_.txt", device)
+

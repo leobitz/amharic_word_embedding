@@ -23,7 +23,7 @@ def encode(word):
         if c == 5:
             chars += [new_c]
         else:
-            chars += [new_c]
+            chars += [new_c, new_v]
     return ''.join(chars)
 
 
@@ -48,6 +48,23 @@ for line in lines:
         new_lines.append(new_line)
 final_text = '\n'.join(new_lines)
 open('data/new_ana2.txt', mode='w', encoding='utf-8').write(final_text)
+
+lines = open('data/anomaly.txt', encoding='utf-8').readlines()
+new_lines = []
+for line in lines:
+    if ':' in line:
+        new_lines.append(line[:-1])
+        continue
+    ws = line[:-1].split(' ')
+    new_words = []
+    for w in ws[:-1]:
+        new_words.append(encode(w))
+    new_words.append(ws[-1])
+    new_line = ' '.join(new_words)
+    if new_line not in new_lines:
+        new_lines.append(new_line)
+final_text = '\n'.join(new_lines)
+open('data/anomaly_new.txt', mode='w', encoding='utf-8').write(final_text)
 
 new_text = []
 for word in words:
