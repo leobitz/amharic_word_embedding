@@ -35,7 +35,7 @@ class Net(nn.Module):
         self.WO.to(device=device, dtype=t.float64)
         self.WO.weight.data.uniform_(-init_width, init_width)
         self.alpha = nn.Parameter(t.tensor([1.0], requires_grad=True, device=device, dtype=t.float64))
-        self.beta = nn.Parameter(t.ones(5, requires_grad=True, device=device, dtype=t.float64))
+        self.beta = nn.Parameter(t.tensor([1.0], requires_grad=True, device=device, dtype=t.float64))
         n_filters = 10
         if device == 'cuda':
             self.fc1 = nn.Linear(n_filters * 4 * 16, embed_size).cuda().double()
@@ -59,10 +59,10 @@ class Net(nn.Module):
 
     def vI_out(self, x_lookup, word_image, batch_size):
         input_x = self.layer1(word_image).view(batch_size, -1)
-        seqI = self.fc1(input_x)
+        # seqI = self.fc1(input_x)
 
-        seqI = seqI.view(batch_size, -1, 5)
-        seqI = self.beta * seqI
+        seqI = input_x.view(batch_size, -1, 20)
+        seqI = t.sum(self.beta * seqI, dim=2)
         seqI = seqI.view(batch_size, -1)
 
         vI = self.WI(x_lookup)
@@ -155,9 +155,9 @@ print("Unk count: ", word2freq['<unk>'])
 int_words = words_to_ints(word2int, words)
 int_words = np.array(int_words, dtype=np.int32)
 n_chars = 11 + 2
-n_epoch = 1
+n_epoch = 5
 batch_size = 5
-skip_window = 1
+skip_window = 5
 init_lr = .1
 gen = generateSG(list(int_words), skip_window, batch_size,
                  int2word, char2tup, n_chars, n_consonant, n_vowel)
