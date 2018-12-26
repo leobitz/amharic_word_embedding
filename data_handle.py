@@ -543,7 +543,7 @@ def generate_word_images_multi(words, char2tup, batch_size, n_consonant, n_vowel
         for i in range(batch_size):
             input_con, input_vow = word2vec_seperated(char2tup,
                                                       batch_words[i], n_chars, n_consonant, n_vowels)
-            target_con, target_vow = word2vec_seperated(char2tup,
+         giy   target_con, target_vow = word2vec_seperated(char2tup,
                                                         batch_targets[i], n_chars, n_consonant, n_vowels)
             decoder_con, decoder_vow = word2vec_seperated(char2tup,
                                                           batch_target_ins[i], n_chars, n_consonant, n_vowels)

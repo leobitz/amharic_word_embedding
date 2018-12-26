@@ -106,9 +106,9 @@ int_words = words_to_ints(word2int, words)
 int_words = np.array(int_words, dtype=np.int32)
 
 n_epoch = 5
-batch_size = 10
-skip_window = 1
-init_lr = .5
+batch_size = 5
+skip_window = 5
+init_lr = .1
 gen = generateSG(list(int_words), skip_window, batch_size)
 
 ns_unigrams = np.array(
@@ -139,3 +139,5 @@ for i in range(steps_per_epoch * n_epoch):
         print(np.mean(losses), lr)
         losses = []
 net.save_embedding(word2int, "results/w2v_plain_torch.txt", 'cpu')
+
+

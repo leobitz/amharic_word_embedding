@@ -35,7 +35,7 @@ class Net(nn.Module):
         self.WO.to(device=device, dtype=t.float64)
         self.WO.weight.data.uniform_(-init_width, init_width)
         self.alpha = nn.Parameter(t.tensor([1.0], requires_grad=True, device=device, dtype=t.float64))
-        self.beta = nn.Parameter(t.ones(5, requires_grad=True, device=device, dtype=t.float64))
+        self.beta = nn.Parameter(t.ones(20, requires_grad=True, device=device, dtype=t.float64))
         n_filters = 10
         if device == 'cuda':
             self.fc1 = nn.Linear(n_filters * 4 * 16, embed_size).cuda().double()
@@ -48,7 +48,7 @@ class Net(nn.Module):
             self.fc2 = nn.Linear(embed_size * 2, embed_size).cuda().double()
             self.fc3 = nn.Linear(embed_size, embed_size).cuda().double()
         else:
-            self.fc1 = nn.Linear(n_filters * 4 * 16, embed_size).double()
+            self.fc1 = nn.Linear(132, embed_size).double()
             self.layer1 = nn.Sequential(
                 nn.Conv2d(1, n_filters, kernel_size=5, stride=1, padding=2).double(),
                 nn.ReLU(),
@@ -57,17 +57,25 @@ class Net(nn.Module):
             self.fc2 = nn.Linear(embed_size, embed_size).double()
             self.fc3 = nn.Linear(embed_size, embed_size).double()
 
+    def attention(self, seq, vI, vO, batch_size):
+        seq_score = t.exp(t.sum(t.mul(seq, vO), dim=1).view(batch_size, -1))
+        vI_score = t.exp(t.sum(t.mul(vI, vO), dim=1).view(batch_size, -1))
+        seq_prob = seq_score /(seq_score + vI_score)
+        vI_prop = vI_score /(seq_score + vI_score)
+        x = vI_prop * vI + seq_prob * seq
+        return x, seq_prob, vI_prop
+    
     def vI_out(self, x_lookup, word_image, batch_size):
         input_x = self.layer1(word_image).view(batch_size, -1)
-        seqI = self.fc1(input_x)
+        # seqI = self.fc1(input_x)
 
-        seqI = seqI.view(batch_size, -1, 5)
-        seqI = self.beta * seqI
-        seqI = seqI.view(batch_size, -1)
-
+        seqI = input_x.view(batch_size, -1, 20)
+        seqI = t.sum(self.beta * seqI, dim=2)
+        # seqI = seqI.view(batch_size, -1)
+        
         vI = self.WI(x_lookup)
-        vI = self.alpha * vI +  seqI
-        return vI
+        # vI = self.alpha * vI +  seqI
+        return vI, seqI
 
     def forward(self, word_image, x, y):
         word_image, x_lookup, y_lookup, neg_lookup = self.prepare_inputs(word_image,x, y)
@@ -75,7 +83,11 @@ class Net(nn.Module):
         vO = self.WO(y_lookup)
         samples = self.WO(neg_lookup)
 
-        vI = self.vI_out(x_lookup, word_image, len(y))
+        vI, seq = self.vI_out(x_lookup, word_image, len(y))
+        # vI, seq_prob, vI_prop = self.attention(seq, vI, vO, len(y))
+        vI = t.cat((vI, seq), dim=1)
+        vI = self.fc1(vI)
+
 
         pos_z = t.mul(vO, vI).squeeze()
         vI = vI.unsqueeze(2).view(len(x), self.embed_size, 1)
@@ -87,7 +99,7 @@ class Net(nn.Module):
 
         loss = -pos_score - t.sum(neg_score)
         loss = t.mean(loss)
-        return loss
+        return loss#, seq_prob, vI_prop
 
     def prepare_inputs(self, image, x, y):
         word_image = t.tensor(image, dtype=t.double, device=self.device)
@@ -102,10 +114,10 @@ class Net(nn.Module):
     def get_embedding(self, image, x):
         word_image = t.tensor(image, dtype=t.double, device=self.device)
         x_lookup = t.tensor(x, dtype=t.long, device=self.device)
-        vI = self.vI_out(x_lookup, word_image, len(x))
-        embeddings = vI.detach().numpy()
+        # vI = self.vI_out(x_lookup, word_image, len(x))
+        # embeddings = vI.detach().numpy()
         vI_w = self.WI(x_lookup).detach().numpy()
-        return embeddings, vI_w
+        return vI_w, vI_w
 
     def save_embedding(self, embed_dict, file_name, device):
         file = open(file_name, encoding='utf8', mode='w')
@@ -155,9 +167,9 @@ print("Unk count: ", word2freq['<unk>'])
 int_words = words_to_ints(word2int, words)
 int_words = np.array(int_words, dtype=np.int32)
 n_chars = 11 + 2
-n_epoch = 1
+n_epoch = 5
 batch_size = 5
-skip_window = 1
+skip_window = 5
 init_lr = .1
 gen = generateSG(list(int_words), skip_window, batch_size,
                  int2word, char2tup, n_chars, n_consonant, n_vowel)
@@ -179,7 +191,7 @@ steps_per_epoch = (len(int_words) * skip_window) // batch_size
 for i in range(steps_per_epoch * n_epoch):
     sgd.zero_grad()
     x1, x2, y = next(gen)
-    out = net.forward(x2, x1, y)
+    out  = net.forward(x2, x1, y)
     out.backward() 
     sgd.step()
     n_words = i * batch_size
@@ -188,9 +200,9 @@ for i in range(steps_per_epoch * n_epoch):
     for param_group in sgd.param_groups:
         param_group['lr'] = lr
     losses.append(out.detach().cpu().numpy())
-    if i % (steps_per_epoch // 3) == 0:
-        print(net.alpha, net.beta)
-        s = "Loss: {0:.4f} lr: {1:.4f} Time Left: {2:.2f}"
+    if i % (steps_per_epoch // 10) == 0:
+        # print(seq_prob, vI_prop)
+        s = "Loss {0:.4f} lr: {1:.4f} Time Left: {2:.2f}"
         span = (time.time() - start_time)
         print(s.format(np.mean(losses), lr, span))
         start_time = time.time()
@@ -211,6 +223,6 @@ for i in range(len(vocab)):
     embed_dict_2[word] = em_row2.reshape((-1,))
 
 
-net.save_embedding(embed_dict, "results/w2v_cnn.txt", device)
+# net.save_embedding(embed_dict, "results/w2v_cnn.txt", device)
 net.save_embedding(embed_dict_2, "results/w2v_cnn_.txt", device)
 
