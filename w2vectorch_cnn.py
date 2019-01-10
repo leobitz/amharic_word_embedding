@@ -211,12 +211,11 @@ step_time = []
 start_time = time.time()
 steps_per_epoch = (len(int_words) * skip_window) // batch_size
 for i in range(steps_per_epoch * n_epoch):
-    if i == 0:
-        sgd.zero_grad()
-        x1, x2, y = next(gen)
-        out  = net.forward(x2, x1, y)
-    # out.backward() 
-    # sgd.step()
+    sgd.zero_grad()
+    x1, x2, y = next(gen)
+    out  = net.forward(x2, x1, y)
+    out.backward() 
+    sgd.step()
     n_words = i * batch_size
     lr = max(.0001, init_lr * (1.0 - n_words /
                                (len(int_words) * skip_window * n_epoch)))
