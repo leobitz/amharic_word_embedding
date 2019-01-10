@@ -150,10 +150,10 @@ print("Unk count: ", word2freq['<unk>'])
 int_words = words_to_ints(word2int, words)
 int_words = np.array(int_words, dtype=np.int32)
 n_chars = 11 + 2
-n_epoch = 0
-batch_size = 10
+n_epoch = 3
+batch_size = 5
 skip_window = 1
-init_lr = .1
+init_lr = .5
 gen = generateSG(list(int_words), skip_window, batch_size,
                  int2word, char2tup, n_chars, n_consonant, n_vowel)
 
@@ -171,6 +171,30 @@ backward_time = []
 step_time = []
 start_time = time.time()
 steps_per_epoch = (len(int_words) * skip_window) // batch_size
+
+
+def save_result(step):
+    vocab = list(word2int.keys())
+    embed_dict = {}
+    embed_dict_2 = {}
+    for i in range(len(vocab)):
+        word = vocab[i]
+        if '<unk>' in word:
+            continue
+        con_mat, vow_mat = word2vec_seperated(
+            char2tup, word, n_chars, n_consonant, n_vowel)
+        word_mat = np.concatenate([con_mat, vow_mat], axis=1).reshape(
+            (1, 1, n_chars, (n_consonant + n_vowel)))
+        x_index = word2int[word]
+        em_row1, em_row2 = net.get_embedding(word_mat, [x_index])
+        embed_dict[word] = em_row1.reshape((-1,))
+        embed_dict_2[word] = em_row2.reshape((-1,))
+
+
+    # net.save_embedding(embed_dict, "results/w2v_cnn.txt", device)
+    net.save_embedding(embed_dict_2, "results/w2v_cnn_{0}.txt".format(step), device)
+
+
 for i in range(steps_per_epoch * n_epoch):
     sgd.zero_grad()
     x1, x2, y = next(gen)
@@ -189,23 +213,5 @@ for i in range(steps_per_epoch * n_epoch):
         span = (time.time() - start_time)
         print(s.format(np.mean(losses), lr, span))
         start_time = time.time()
-
-del word2int['<unk>']
-vocab = list(word2int.keys())
-embed_dict = {}
-embed_dict_2 = {}
-for i in range(len(vocab)):
-    word = vocab[i]
-    con_mat, vow_mat = word2vec_seperated(
-        char2tup, word, n_chars, n_consonant, n_vowel)
-    word_mat = np.concatenate([con_mat, vow_mat], axis=1).reshape(
-        (1, 1, n_chars, (n_consonant + n_vowel)))
-    x_index = word2int[word]
-    em_row1, em_row2 = net.get_embedding(word_mat, [x_index])
-    embed_dict[word] = em_row1.reshape((-1,))
-    embed_dict_2[word] = em_row2.reshape((-1,))
-
-
-# net.save_embedding(embed_dict, "results/w2v_cnn.txt", device)
-net.save_embedding(embed_dict_2, "results/w2v_cnn_.txt", device)
-
+    if i % steps_per_epoch == 0:
+        save_result(i//steps_per_epoch)
