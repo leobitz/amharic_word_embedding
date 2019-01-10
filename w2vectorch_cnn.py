@@ -48,7 +48,7 @@ class Net(nn.Module):
             self.fc2 = nn.Linear(embed_size * 2, embed_size).cuda().double()
             self.fc3 = nn.Linear(embed_size, embed_size).cuda().double()
         else:
-            self.fc1 = nn.Linear(132, embed_size).double()
+            self.fc1 = nn.Linear(640, embed_size).double()
             self.layer1 = nn.Sequential(
                 nn.Conv2d(1, n_filters, kernel_size=5, stride=1, padding=2).double(),
                 nn.ReLU(),
@@ -67,10 +67,11 @@ class Net(nn.Module):
     
     def vI_out(self, x_lookup, word_image, batch_size):
         input_x = self.layer1(word_image).view(batch_size, -1)
-        # seqI = self.fc1(input_x)
+        seqI = self.fc1(input_x)
 
-        seqI = input_x.view(batch_size, -1, 20)
-        seqI = t.sum(self.beta * seqI, dim=2)
+        # seqI = input_x.view(batch_size, -1)
+        # seqI = self.fc1(seqI)
+        # seqI = t.sum(self.beta * seqI, dim=2)
         # seqI = seqI.view(batch_size, -1)
         
         vI = self.WI(x_lookup)
@@ -85,11 +86,11 @@ class Net(nn.Module):
 
         vI, seq = self.vI_out(x_lookup, word_image, len(y))
         # vI, seq_prob, vI_prop = self.attention(seq, vI, vO, len(y))
-        vI = t.cat((vI, seq), dim=1)
-        vI = self.fc1(vI)
+        # vI = t.cat((vI, seq), dim=1)
+        # vI = self.fc1(vI)
 
 
-        pos_z = t.mul(vO, vI).squeeze()
+        pos_z = t.mul(vO, vI).squeeze() + t.mul(vO, seq).squeeze()
         vI = vI.unsqueeze(2).view(len(x), self.embed_size, 1)
         neg_z = -t.bmm(samples, vI).squeeze()
 
@@ -114,10 +115,10 @@ class Net(nn.Module):
     def get_embedding(self, image, x):
         word_image = t.tensor(image, dtype=t.double, device=self.device)
         x_lookup = t.tensor(x, dtype=t.long, device=self.device)
-        # vI = self.vI_out(x_lookup, word_image, len(x))
+        vI, seq = self.vI_out(x_lookup, word_image, len(x))
         # embeddings = vI.detach().numpy()
-        vI_w = self.WI(x_lookup).detach().numpy()
-        return vI_w, vI_w
+        # vI_w = self.WI(x_lookup).detach().numpy()
+        return vI, seq
 
     def save_embedding(self, embed_dict, file_name, device):
         file = open(file_name, encoding='utf8', mode='w')
@@ -167,8 +168,8 @@ print("Unk count: ", word2freq['<unk>'])
 int_words = words_to_ints(word2int, words)
 int_words = np.array(int_words, dtype=np.int32)
 n_chars = 11 + 2
-n_epoch = 5
-batch_size = 5
+n_epoch = 1
+batch_size = 10
 skip_window = 5
 init_lr = .1
 gen = generateSG(list(int_words), skip_window, batch_size,
@@ -223,6 +224,6 @@ for i in range(len(vocab)):
     embed_dict_2[word] = em_row2.reshape((-1,))
 
 
-# net.save_embedding(embed_dict, "results/w2v_cnn.txt", device)
-net.save_embedding(embed_dict_2, "results/w2v_cnn_.txt", device)
+net.save_embedding(embed_dict, "results/w2v_cnn_plus.txt", device)
+net.save_embedding(embed_dict_2, "results/w2v_cnn_p.txt", device)
 
