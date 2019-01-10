@@ -51,15 +51,15 @@ class Utils:
         return sim_words
 
 
-words = read_file()
-vocab, word2int, int2word = build_vocab(words)
+# words = read_file()
+# vocab, word2int, int2word = build_vocab(words)
 
 # words = read_file(filename='data/all.txt')
 # vocab, word2int, int2word = build_vocab(words)
 # word2freq = get_frequency(words, word2int, int2word)
 
-words, word2freq = min_count_threshold(words, 5)
-vocab, word2int, int2word = build_vocab(words)
+# words, word2freq = min_count_threshold(words, 5)
+# vocab, word2int, int2word = build_vocab(words)
 
 
 # int_words = words_to_ints(word2int, words)
@@ -80,43 +80,44 @@ vocab, word2int, int2word = build_vocab(words)
 # # batch_size = 120
 # # embed_size = 128
 # # skip_window = 5
-def parseVec(file, delimiter, f):
-    lines = open(file, encoding='utf8').readlines()
-    vocab_size, embed_size = [int(s) for s in lines[0].split()]
-    embeddings = np.ndarray((vocab_size + 1, embed_size), dtype=np.float32)
-    for i in range(vocab_size):
-        if f:
-            line = lines[i + 1][:-1].split(delimiter)[:-1]
-        else:
-            line = lines[i + 1][:-1].split(delimiter)
-        word = line[0]
-        if word in word2int:
-            wordvec = np.array([float(j) for j in line[1:]])
-            embeddings[word2int[word]] = wordvec
-    return embeddings
+# def parseVec(file, delimiter):
+#     lines = open(file, encoding='utf8').readlines()
+#     vocab_size, embed_size = [int(s) for s in lines[0].split()]
+#     vocab_size  = min(len(word2int), vocab_size)
+#     embeddings = np.ndarray((vocab_size, embed_size), dtype=np.float64)
+#     for i in range(1, vocab_size):
+#         try:
+#             line = lines[i][:-1].split(delimiter)
+#             word = line[0]
+#             if word in word2int:
+#                 wordvec = np.array([np.float64(j) for j in line[1:] if j != ''])
+#                 embeddings[word2int[word]] = wordvec
+#         except Exception as e:
+#             print(lines[i])
+#             print(e)
+#     return embeddings
 
+# sem = normalize(parseVec('results/w2v.txt', ' ', True))
+# syn = normalize(parseVec('results/w2v_torch.txt_', ' ', False))
 
-sem = normalize(parseVec('results/w2v.txt', ' ', True))
-syn = normalize(parseVec('results/w2v_torch.txt_', ' ', False))
-
-result = evaluate(word2int, sem)
-print(result)
-result = evaluate(word2int, syn)
-print(result)
-util = Utils(word2int, int2word, sem, syn)
-lines = open('data/newan2.txt', encoding='utf-8').readlines()
-acc = np.array([0, 0])
-total = np.array([0, 0])
-ind = 0
-for line in lines[1:]:
-    if ':' in line[:-1]:
-        ind = 1
-        continue
-    ws = line[:-1].split()
-    result = util.solve(ws)
-    if result is None:
-        continue
-    if ws[-1] in result:
-        acc[ind] += 1
-    total[ind] += 1
-print(acc * 100 / total)
+# result = evaluate(word2int, sem)
+# print(result)
+# result = evaluate(word2int, syn)
+# print(result)
+# util = Utils(word2int, int2word, sem, syn)
+# lines = open('data/newan2.txt', encoding='utf-8').readlines()
+# acc = np.array([0, 0])
+# total = np.array([0, 0])
+# ind = 0
+# for line in lines[1:]:
+#     if ':' in line[:-1]:
+#         ind = 1
+#         continue
+#     ws = line[:-1].split()
+#     result = util.solve(ws)
+#     if result is None:
+#         continue
+#     if ws[-1] in result:
+#         acc[ind] += 1
+#     total[ind] += 1
+# print(acc * 100 / total)

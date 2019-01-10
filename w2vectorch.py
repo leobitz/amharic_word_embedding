@@ -47,7 +47,7 @@ class Net(nn.Module):
         neg_z = -t.bmm(samples, vI.unsqueeze(2).view(len(x),
                                                      self.embed_size, 1)).squeeze()
         neg_score = F.logsigmoid(neg_z)
-        loss = -pos_score - t.sum(neg_score)
+        loss = -pos_score - t.sum(neg_score)``
         loss = t.mean(loss)
         return loss
 
