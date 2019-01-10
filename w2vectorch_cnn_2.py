@@ -191,7 +191,7 @@ def save_result(step):
         embed_dict_2[word] = em_row2.reshape((-1,))
 
 
-    # net.save_embedding(embed_dict, "results/w2v_cnn.txt", device)
+    net.save_embedding(embed_dict, "results/w2v_cnn.txt", device)
     net.save_embedding(embed_dict_2, "results/w2v_cnn_{0}.txt".format(step), device)
 
 

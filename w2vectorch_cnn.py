@@ -157,6 +157,27 @@ def generateSG(data, skip_window, batch_size,
         yield batch_input, batch_vec_input, batch_output
 
 
+def save_result(step):
+    vocab = list(word2int.keys())
+    embed_dict = {}
+    embed_dict_2 = {}
+    for i in range(len(vocab)):
+        word = vocab[i]
+        if '<unk>' in word:
+            continue
+        con_mat, vow_mat = word2vec_seperated(
+            char2tup, word, n_chars, n_consonant, n_vowel)
+        word_mat = np.concatenate([con_mat, vow_mat], axis=1).reshape(
+            (1, 1, n_chars, (n_consonant + n_vowel)))
+        x_index = word2int[word]
+        em_row1, em_row2 = net.get_embedding(word_mat, [x_index])
+        embed_dict[word] = em_row1.reshape((-1,))
+        embed_dict_2[word] = em_row2.reshape((-1,))
+
+    net.save_embedding(embed_dict, "results/w2v_cnn_1{0}.txt".format(step), device)
+    net.save_embedding(embed_dict_2, "results/w2v_cnn_2{0}.txt".format(step), device)
+
+
 words = read_file()
 words, word2freq = min_count_threshold(words)
 # words = subsampling(words, 1e-3)
@@ -168,7 +189,7 @@ print("Unk count: ", word2freq['<unk>'])
 int_words = words_to_ints(word2int, words)
 int_words = np.array(int_words, dtype=np.int32)
 n_chars = 11 + 2
-n_epoch = 1
+n_epoch = 4
 batch_size = 10
 skip_window = 5
 init_lr = .1
@@ -190,11 +211,12 @@ step_time = []
 start_time = time.time()
 steps_per_epoch = (len(int_words) * skip_window) // batch_size
 for i in range(steps_per_epoch * n_epoch):
-    sgd.zero_grad()
-    x1, x2, y = next(gen)
-    out  = net.forward(x2, x1, y)
-    out.backward() 
-    sgd.step()
+    if i == 0:
+        sgd.zero_grad()
+        x1, x2, y = next(gen)
+        out  = net.forward(x2, x1, y)
+    # out.backward() 
+    # sgd.step()
     n_words = i * batch_size
     lr = max(.0001, init_lr * (1.0 - n_words /
                                (len(int_words) * skip_window * n_epoch)))
@@ -205,25 +227,9 @@ for i in range(steps_per_epoch * n_epoch):
         # print(seq_prob, vI_prop)
         s = "Loss {0:.4f} lr: {1:.4f} Time Left: {2:.2f}"
         span = (time.time() - start_time)
-        print(s.format(np.mean(losses), lr, span))
+        # print(s.format(np.mean(losses), lr, span))
         start_time = time.time()
+    if i > 0 and i % steps_per_epoch == 0 :
+        save_result(i//steps_per_epoch)
 
-del word2int['<unk>']
-vocab = list(word2int.keys())
-embed_dict = {}
-embed_dict_2 = {}
-for i in range(len(vocab)):
-    word = vocab[i]
-    con_mat, vow_mat = word2vec_seperated(
-        char2tup, word, n_chars, n_consonant, n_vowel)
-    word_mat = np.concatenate([con_mat, vow_mat], axis=1).reshape(
-        (1, 1, n_chars, (n_consonant + n_vowel)))
-    x_index = word2int[word]
-    em_row1, em_row2 = net.get_embedding(word_mat, [x_index])
-    embed_dict[word] = em_row1.reshape((-1,))
-    embed_dict_2[word] = em_row2.reshape((-1,))
-
-
-net.save_embedding(embed_dict, "results/w2v_cnn_plus.txt", device)
-net.save_embedding(embed_dict_2, "results/w2v_cnn_p.txt", device)
-
+save_result(n_epoch)
