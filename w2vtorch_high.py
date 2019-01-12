@@ -47,6 +47,7 @@ class Net(nn.Module):
             nn.MaxPool2d(kernel_size=3)
         )
         self.layer2 = nn.Linear(640, embed_size).double()
+        self.layer3 = nn.Linear(embed_size, embed_size).double()
         self.T = nn.Sequential(
             nn.Linear(embed_size, embed_size).double(),
             nn.Sigmoid()
@@ -55,7 +56,8 @@ class Net(nn.Module):
     def vI_out(self, x_lookup, word_image, batch_size):
         x = self.layer1(word_image)
         x = x.view(batch_size, -1)
-        y = self.layer2(x)
+        x = self.layer2(x)
+        y = self.layer3(x)
         T = self.T(x)
         C = 1 - T
         z = y * T + x * C

@@ -68,23 +68,23 @@ def ns_sample(word2freq, word2int, int2word, rate):
 def min_count_threshold(words, min_count=5):
     new_words = []
     word2freq = {}
-    unkown_word = "<unk>"
-    new_words.append(unkown_word)
+    # unkown_word = "<unk>"
+    # new_words.append(unkown_word)
     for word in words:
         if word not in word2freq:
             word2freq[word] = 0
         word2freq[word] += 1
 
     freq = {}
-    freq[unkown_word] = 0
+    # freq[unkown_word] = 0
     for word in words:
         if word2freq[word] >= min_count:
             new_words.append(word)
             if word not in freq:
                 freq[word] = 0
             freq[word] += 1
-        else:
-            freq[unkown_word] += 1
+        # else:
+        #     freq[unkown_word] += 1
 
     return new_words, freq
 
@@ -353,7 +353,6 @@ def generate_batch_image_v2(words, word2int, char2int, batch_size, skip_window):
         for batch_index in range(0, batch_size, skip_window * 2):  # fill the batch inputs
             context, ci = get_context_words(words, ci, window)
             target_word = context.pop(skip_window)
-            # .reshape((13, 309, 1))
             target_vec = word2vec(char2int, targets[target_word], 13)
             target_input_vec = word2vec(
                 char2int, target_inputs[target_word], 13)  # .reshape((13, 309, 1))
@@ -800,6 +799,51 @@ def generate_for_char_langauge(words, int_words, int2word, char2tup,
             batch_vow_dec_inputs[i] = input_vow
             ci += 1
         yield [batch_inputs, batch_cons_dec_inputs, batch_vow_dec_inputs], [batch_cons_output, batch_vow_output]
+
+
+def gen_imag_neg(data, skip_window, batch_size,
+               int2word, char2tup,neg_dest, n_chars, n_consonant, n_vowels):
+    win_size = skip_window  # np.random.randint(1, skip_window + 1)
+    i = win_size
+    mat_width = n_consonant + n_vowels
+    batch_y = np.zeros((batch_size, 1))
+    while True:
+        batch_input = []
+        batch_output = []
+        batch_neg = []
+        for bi in range(0, batch_size, skip_window * 2):
+            context = data[i - win_size: i + win_size + 1]
+            target = context.pop(win_size)
+            targets = [target] * (win_size * 2)
+            negs = random.sample(neg_dest, win_size*2)
+            # negs = targets
+            con_mat, vow_mat = word2vec_seperated(char2tup,
+                                                  int2word[target], n_chars, n_consonant, n_vowels)
+            word_mat = np.concatenate([con_mat, vow_mat], axis=1).reshape(
+                (1, n_chars, mat_width, 1))
+            batch_input.extend([word_mat] * (win_size * 2))
+
+            for cntx in context:
+                con_mat, vow_mat = word2vec_seperated(char2tup,
+                                                    int2word[cntx], n_chars, n_consonant, n_vowels)
+                word_mat = np.concatenate([con_mat, vow_mat], axis=1).reshape(
+                    (1, n_chars, mat_width, 1))
+                batch_output.append(word_mat)
+            
+            for cntx in negs:
+                con_mat, vow_mat = word2vec_seperated(char2tup,
+                                                    int2word[cntx], n_chars, n_consonant, n_vowels)
+                word_mat = np.concatenate([con_mat, vow_mat], axis=1).reshape(
+                    (1, n_chars, mat_width, 1))
+                batch_neg.append(word_mat)
+
+            i += 1
+            if i + win_size + 1 > len(data):
+                i = win_size
+        batch_input = np.vstack(batch_input)
+        batch_output = np.vstack(batch_output)
+        batch_neg = np.vstack(batch_neg)
+        yield [batch_input, batch_output, batch_neg], batch_y
 
 # words = read_file()
 # vocab, word2int, int2word = build_vocab(words)
