@@ -10,8 +10,7 @@ from w2vtorch_high import Net
 
 def save_result(step):
     vocab = list(word2int.keys())
-    embed_dict = {}
-    embed_dict_2 = {}
+    result_dicts = []
     for i in range(len(vocab)):
         word = vocab[i]
         if '<unk>' in word:
@@ -21,12 +20,14 @@ def save_result(step):
         word_mat = np.concatenate([con_mat, vow_mat], axis=1).reshape(
             (1, 1, n_chars, (n_consonant + n_vowel)))
         x_index = word2int[word]
-        em_row1, em_row2 = net.get_embedding(word_mat, [x_index])
-        embed_dict[word] = em_row1.reshape((-1,))
-        embed_dict_2[word] = em_row2.reshape((-1,))
+        result = net.get_embedding(word_mat, [x_index])
+        for j in range(len(result)):
+            if len(result_dicts) < j + 1:
+                result_dicts.append({})
+            result_dicts[j][word] = result[j].reshape((-1,))
 
-    net.save_embedding(embed_dict, "results/w2v_high_1{0}.txt".format(step), device)
-    net.save_embedding(embed_dict_2, "results/w2v_high_2{0}.txt".format(step), device)
+    for counter, rdict in enumerate(result_dicts):
+        net.save_embedding(rdict, "results/w2v_high_{0}_{1}.txt".format(counter, step), device)
 
 
 def generateSG(data, skip_window, batch_size,
@@ -63,13 +64,13 @@ vocab, word2int, int2word = build_vocab(words)
 char2int, int2char, char2tup, tup2char, n_consonant, n_vowel = build_charset()
 print("Words to train: ", len(words))
 print("Vocabs to train: ", len(vocab))
-print("Unk count: ", word2freq['<unk>'])
+# print("Unk count: ", word2freq['<unk>'])
 int_words = words_to_ints(word2int, words)
 int_words = np.array(int_words, dtype=np.int32)
 n_chars = 11 + 2
-n_epoch = 4
+n_epoch = 5
 batch_size = 10
-skip_window = 5
+skip_window = 3
 init_lr = .1
 gen = generateSG(list(int_words), skip_window, batch_size,
                  int2word, char2tup, n_chars, n_consonant, n_vowel)
@@ -104,7 +105,7 @@ for i in range(steps_per_epoch * n_epoch):
         # print(seq_prob, vI_prop)
         s = "Loss {0:.4f} lr: {1:.4f} Time Left: {2:.2f}"
         span = (time.time() - start_time)
-        # print(s.format(np.mean(losses), lr, span))
+        print(s.format(np.mean(losses), lr, span))
         start_time = time.time()
     if i > 0 and i % steps_per_epoch == 0 :
         save_result(i//steps_per_epoch)
