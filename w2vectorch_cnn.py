@@ -27,7 +27,6 @@ class Net(nn.Module):
                                (vocab_size, embed_size)) for i in range(2)]
         if device == 'gpu': device = 'cuda'
         self.device = t.device(device)
-
         self.WI = nn.Embedding(vocab_size, embed_size, sparse=True)
         self.WI.to(device=device, dtype=t.float64)
         self.WI.weight.data.uniform_(-init_width, init_width)
@@ -36,26 +35,14 @@ class Net(nn.Module):
         self.WO.weight.data.uniform_(-init_width, init_width)
         self.alpha = nn.Parameter(t.tensor([1.0], requires_grad=True, device=device, dtype=t.float64))
         self.beta = nn.Parameter(t.ones(20, requires_grad=True, device=device, dtype=t.float64))
+        
         n_filters = 10
-        if device == 'cuda':
-            self.fc1 = nn.Linear(n_filters * 4 * 16, embed_size).cuda().double()
-            self.layer1 = nn.Sequential(
-                nn.Conv2d(1, n_filters, kernel_size=5, stride=1,
-                          padding=2).cuda().double(),
-                nn.ReLU(),
-                nn.MaxPool2d(kernel_size=3)
-            )
-            self.fc2 = nn.Linear(embed_size * 2, embed_size).cuda().double()
-            self.fc3 = nn.Linear(embed_size, embed_size).cuda().double()
-        else:
-            self.fc1 = nn.Linear(640, embed_size).double()
-            self.layer1 = nn.Sequential(
-                nn.Conv2d(1, n_filters, kernel_size=5, stride=1, padding=2).double(),
-                nn.ReLU(),
-                nn.MaxPool2d(kernel_size=3)
-            )
-            self.fc2 = nn.Linear(embed_size, embed_size).double()
-            self.fc3 = nn.Linear(embed_size, embed_size).double()
+        self.fc1 = nn.Linear(640, embed_size).double()
+        self.layer1 = nn.Sequential(
+            nn.Conv2d(1, n_filters, kernel_size=5, stride=1, padding=2).double(),
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=3)
+        )
 
     def attention(self, seq, vI, vO, batch_size):
         seq_score = t.exp(t.sum(t.mul(seq, vO), dim=1).view(batch_size, -1))
@@ -68,14 +55,8 @@ class Net(nn.Module):
     def vI_out(self, x_lookup, word_image, batch_size):
         input_x = self.layer1(word_image).view(batch_size, -1)
         seqI = self.fc1(input_x)
-
-        # seqI = input_x.view(batch_size, -1)
-        # seqI = self.fc1(seqI)
-        # seqI = t.sum(self.beta * seqI, dim=2)
-        # seqI = seqI.view(batch_size, -1)
-        
         vI = self.WI(x_lookup)
-        # vI = self.alpha * vI +  seqI
+
         return vI, seqI
 
     def forward(self, word_image, x, y):
@@ -83,12 +64,7 @@ class Net(nn.Module):
         
         vO = self.WO(y_lookup)
         samples = self.WO(neg_lookup)
-
         vI, seq = self.vI_out(x_lookup, word_image, len(y))
-        # vI, seq_prob, vI_prop = self.attention(seq, vI, vO, len(y))
-        # vI = t.cat((vI, seq), dim=1)
-        # vI = self.fc1(vI)
-
 
         pos_z = t.mul(vO, vI).squeeze() + t.mul(vO, seq).squeeze()
         vI = vI.unsqueeze(2).view(len(x), self.embed_size, 1)
@@ -100,7 +76,7 @@ class Net(nn.Module):
 
         loss = -pos_score - t.sum(neg_score)
         loss = t.mean(loss)
-        return loss#, seq_prob, vI_prop
+        return loss
 
     def prepare_inputs(self, image, x, y):
         word_image = t.tensor(image, dtype=t.double, device=self.device)
@@ -116,8 +92,8 @@ class Net(nn.Module):
         word_image = t.tensor(image, dtype=t.double, device=self.device)
         x_lookup = t.tensor(x, dtype=t.long, device=self.device)
         vI, seq = self.vI_out(x_lookup, word_image, len(x))
-        # embeddings = vI.detach().numpy()
-        # vI_w = self.WI(x_lookup).detach().numpy()
+        vI = vI.detach().numpy()
+        seq = seq.detach().numpy()
         return vI, seq
 
     def save_embedding(self, embed_dict, file_name, device):
@@ -223,10 +199,9 @@ for i in range(steps_per_epoch * n_epoch):
         param_group['lr'] = lr
     losses.append(out.detach().cpu().numpy())
     if i % (steps_per_epoch // 10) == 0:
-        # print(seq_prob, vI_prop)
         s = "Loss {0:.4f} lr: {1:.4f} Time Left: {2:.2f}"
         span = (time.time() - start_time)
-        # print(s.format(np.mean(losses), lr, span))
+        print(s.format(np.mean(losses), lr, span))
         start_time = time.time()
     if i > 0 and i % steps_per_epoch == 0 :
         save_result(i//steps_per_epoch)
