@@ -57,11 +57,12 @@ class Net(nn.Module):
         x = self.layer1(word_image)
         x = x.view(batch_size, -1)
         x = self.layer2(x)
-        y = self.layer3(x)
+        # y = self.layer3(x)
+        y =  self.WI(x_lookup)
         T = self.T(x)
         C = 1 - T
         z = y * T + x * C
-        return [z]
+        return [z, y, x]
 
     def forward(self, word_image, x, y):
         word_image, x_lookup, y_lookup, neg_lookup = self.prepare_inputs(
@@ -103,7 +104,7 @@ class Net(nn.Module):
 
     def save_embedding(self, embed_dict, file_name, device):
         file = open(file_name, encoding='utf8', mode='w')
-        file.write("{0} {1}\n".format(len(word2int), self.embed_size))
+        file.write("{0} {1}\n".format(len(embed_dict), self.embed_size))
         for word in embed_dict.keys():
             e = embed_dict[word]
             e = ' '.join([str(x) for x in e])
