@@ -68,23 +68,23 @@ def ns_sample(word2freq, word2int, int2word, rate):
 def min_count_threshold(words, min_count=5):
     new_words = []
     word2freq = {}
-    # unkown_word = "<unk>"
-    # new_words.append(unkown_word)
+    unkown_word = "*###*"
+    new_words.append(unkown_word)
     for word in words:
         if word not in word2freq:
             word2freq[word] = 0
         word2freq[word] += 1
 
     freq = {}
-    # freq[unkown_word] = 0
+    freq[unkown_word] = 0
     for word in words:
         if word2freq[word] >= min_count:
             new_words.append(word)
             if word not in freq:
                 freq[word] = 0
             freq[word] += 1
-        # else:
-        #     freq[unkown_word] += 1
+        else:
+            freq[unkown_word] += 1
 
     return new_words, freq
 
@@ -145,6 +145,34 @@ def word2vec_seperated(char2tup, word, max_word_len, n_consonant, n_vowel):
     cons[i + 1:, con] = 1
     vowel[i + 1:, vow] = 1
     return cons, vowel
+
+
+def char_to_vec(char, char2tup, n_consonant, n_vowel):
+    vec = np.zeros(((n_consonant + n_vowel), ))
+    t = char2tup[char]
+    vec[t[0]] = 1
+    vec[n_consonant + t[1]] = 1
+    return vec
+
+
+def word2vec_single(char2tup, words, max_word_len, n_consonant, n_vowel):
+    """
+    using char2int mapping, it creates stack of one-hot vectors characters for a word
+    the mapping is seperated for vowel and consonant
+    [0 0 0 1 0 0: 0 1 0 0]
+    Consonan        Vowel
+    """
+    inputs = [np.ndarray((len(words), (n_consonant + n_vowel)))
+              for i in range(max_word_len)]
+    for i in range(len(words)):
+        chars = words[i]
+        for j in range(len(chars)):
+            inputs[j][i] = char_to_vec(
+                chars[j], char2tup, n_consonant, n_vowel)
+        for k in range(j + 1, max_word_len):
+            inputs[k][i] = char_to_vec(
+                chars[j], char2tup, n_consonant, n_vowel)
+    return inputs
 
 
 def word2vec(char2int, word, max_word_len):
@@ -238,7 +266,8 @@ def generate_batch_embed_v2(data, embeddings, batch_size, skip_window):
             target = context.pop(skip_window)
             # context = random.sample(context, skip_window * 2)
             # context = np.random.choice(context, skip_window, replace=False)
-            batch_embeddings[batch_index:batch_index + win] = embeddings[target]
+            batch_embeddings[batch_index:batch_index +
+                             win] = embeddings[target]
             batch_inputs[batch_index:batch_index + win] = target
             batch_labels[batch_index:batch_index + win, 0] = context
             ci += 1
@@ -559,6 +588,110 @@ def generate_word_images_multi(words, char2tup, batch_size, n_consonant, n_vowel
             batch = 0
 
 
+def generate_word_images_multi_v6(words, char2tup, batch_size, n_consonant, n_vowels):
+    """
+
+    returns cbow input of integer sequence of words. the inputs are for RNN where the context, is normal
+    but for the decoder, there is an input and output
+
+    """
+    targets, target_inputs = [], []
+    for word in words:
+        target = word  # + '|'
+        target_input = '&' + target + '|'
+        targets.append(target)
+        target_inputs.append(target_input)
+    batch = 0
+    n_batchs = len(words) // batch_size
+    n_chars = 13
+    while True:
+        batch_targets = targets[batch:batch + batch_size]
+        batch_target_ins = target_inputs[batch:batch + batch_size]
+        batch_words = words[batch:batch + batch_size]
+        batch_words_string = []
+        batch_inputs = np.ndarray(
+            (batch_size, n_chars, (n_consonant + n_vowels), 1), dtype=np.float32)
+        batch_cons_dec_inputs = np.ndarray(
+            (batch_size, n_chars, n_consonant), dtype=np.float32)
+        batch_vow_dec_inputs = np.ndarray(
+            (batch_size, n_chars, n_vowels), dtype=np.float32)
+        batch_cons_output = np.ndarray(
+            (batch_size, n_chars, n_consonant), dtype=np.float32)
+        batch_vow_output = np.ndarray(
+            (batch_size, n_chars,  n_vowels), dtype=np.float32)
+        for i in range(batch_size):
+            batch_words_string.append(batch_words[i])
+            # input_con, input_vow = word2vec_seperated(char2tup,
+            #                                           batch_words[i], n_chars, n_consonant, n_vowels)
+            target_con, target_vow = word2vec_seperated(char2tup,
+                                                        batch_targets[i], n_chars, n_consonant, n_vowels)
+            decoder_con, decoder_vow = word2vec_seperated(char2tup,
+                                                          batch_target_ins[i], n_chars, n_consonant, n_vowels)
+
+            # batch_inputs[i] = np.concatenate([input_con, input_vow], axis=1).reshape(
+            #     (n_chars, (n_consonant + n_vowels), 1))
+            batch_cons_dec_inputs[i] = decoder_con
+            batch_vow_dec_inputs[i] = decoder_vow
+            batch_cons_output[i] = target_con
+            batch_vow_output[i] = target_vow
+        batch_inputs = word2vec_single(
+            char2tup, batch_words_string, 13, n_consonant, n_vowels)
+        batch_words_string.clear()
+        yield batch_inputs + [batch_cons_dec_inputs, batch_vow_dec_inputs], [batch_cons_output, batch_vow_output]
+        batch += 1
+        if batch == n_batchs:
+            batch = 0
+
+
+def generate_word_images_multi_v5(words, char2tup, batch_size, n_consonant, n_vowels):
+    """
+
+    returns cbow input of integer sequence of words. the inputs are for RNN where the context, is normal
+    but for the decoder, there is an input and output
+
+    """
+    targets, target_inputs = [], []
+    for word in words:
+        target = word  # + '|'
+        target_input = '&' + target + '|'
+        targets.append(target)
+        target_inputs.append(target_input)
+    batch = 0
+    n_batchs = len(words) // batch_size
+    n_chars = 13
+    while True:
+        batch_targets = targets[batch:batch + batch_size]
+        batch_target_ins = target_inputs[batch:batch + batch_size]
+        batch_words = words[batch:batch + batch_size]
+
+        batch_inputs = np.ndarray(
+            (batch_size, n_chars, (n_consonant + n_vowels), 1), dtype=np.float32)
+        batch_dec_inputs = np.ndarray(
+            (batch_size, n_chars, n_consonant + n_vowels), dtype=np.float32)
+        batch_cons_output = np.ndarray(
+            (batch_size, n_chars, n_consonant), dtype=np.float32)
+        batch_vow_output = np.ndarray(
+            (batch_size, n_chars,  n_vowels), dtype=np.float32)
+        for i in range(batch_size):
+            input_con, input_vow = word2vec_seperated(char2tup,
+                                                      batch_words[i], n_chars, n_consonant, n_vowels)
+            target_con, target_vow = word2vec_seperated(char2tup,
+                                                        batch_targets[i], n_chars, n_consonant, n_vowels)
+            decoder_con, decoder_vow = word2vec_seperated(char2tup,
+                                                          batch_target_ins[i], n_chars, n_consonant, n_vowels)
+
+            batch_inputs[i] = np.concatenate([input_con, input_vow], axis=1).reshape(
+                (n_chars, (n_consonant + n_vowels), 1))
+            batch_dec_inputs[i] = np.concatenate([decoder_con, decoder_vow], axis=1).reshape(
+                (n_chars, (n_consonant + n_vowels)))
+            batch_cons_output[i] = target_con
+            batch_vow_output[i] = target_vow
+        yield [batch_inputs, batch_dec_inputs], [batch_cons_output, batch_vow_output]
+        batch += 1
+        if batch == n_batchs:
+            batch = 0
+
+
 def generate_word_images_multi_v4(words, char2tup, batch_size, n_consonant, n_vowels):
     """
 
@@ -600,7 +733,8 @@ def generate_word_images_multi_v4(words, char2tup, batch_size, n_consonant, n_vo
             decoder_con, decoder_vow = word2vec_seperated(char2tup,
                                                           batch_target_ins[i], n_chars, n_consonant, n_vowels)
 
-            batch_inputs_cons[i] = input_con.reshape((-1, n_chars, n_consonant, 1))
+            batch_inputs_cons[i] = input_con.reshape(
+                (-1, n_chars, n_consonant, 1))
             batch_inputs_vow[i] = input_vow.reshape((-1, n_chars, n_vowels, 1))
             batch_cons_dec_inputs[i] = decoder_con
             batch_vow_dec_inputs[i] = decoder_vow
@@ -753,15 +887,23 @@ def subsampling(int_words, threshold=1e-5):
 
 
 def evaluate(word2int, embeddings, corpus='data/news.txt', analogy='data/newan2.txt', embed_size=100):
-    gensimw = GensimWrapper(file=corpus, test_file=analogy, embed_size=embed_size, iter=0, log=False)
+    gensimw = GensimWrapper(file=corpus, test_file=analogy,
+                            embed_size=embed_size, iter=0, log=False)
     gensimw.set_embeddings(word2int, embeddings)
     result = gensimw.evaluate()
     return result
 
 
-def generate_for_char_langauge(words, int_words, int2word, char2tup, 
-                                batch_size=100, n_chars=13, n_consonant=40, 
-                                n_vowels=10, seq_length=5):
+def load_to_gensim(word2int, embeddings, corpus='data/news.txt', embed_size=100):
+    gensimw = GensimWrapper(file=corpus, test_file=None,
+                            embed_size=embed_size, iter=0, log=False)
+    gensimw.set_embeddings(word2int, embeddings)
+    return gensimw.model
+
+
+def generate_for_char_langauge(words, int_words, int2word, char2tup,
+                               batch_size=100, n_chars=13, n_consonant=40,
+                               n_vowels=10, seq_length=5):
     """
 
     returns cbow input of integer sequence of words. the inputs are for RNN where the context, is normal
@@ -802,7 +944,7 @@ def generate_for_char_langauge(words, int_words, int2word, char2tup,
 
 
 def gen_imag_neg(data, skip_window, batch_size,
-               int2word, char2tup,neg_dest, n_chars, n_consonant, n_vowels):
+                 int2word, char2tup, neg_dest, n_chars, n_consonant, n_vowels):
     win_size = skip_window  # np.random.randint(1, skip_window + 1)
     i = win_size
     mat_width = n_consonant + n_vowels
@@ -825,14 +967,14 @@ def gen_imag_neg(data, skip_window, batch_size,
 
             for cntx in context:
                 con_mat, vow_mat = word2vec_seperated(char2tup,
-                                                    int2word[cntx], n_chars, n_consonant, n_vowels)
+                                                      int2word[cntx], n_chars, n_consonant, n_vowels)
                 word_mat = np.concatenate([con_mat, vow_mat], axis=1).reshape(
                     (1, n_chars, mat_width, 1))
                 batch_output.append(word_mat)
-            
+
             for cntx in negs:
                 con_mat, vow_mat = word2vec_seperated(char2tup,
-                                                    int2word[cntx], n_chars, n_consonant, n_vowels)
+                                                      int2word[cntx], n_chars, n_consonant, n_vowels)
                 word_mat = np.concatenate([con_mat, vow_mat], axis=1).reshape(
                     (1, n_chars, mat_width, 1))
                 batch_neg.append(word_mat)
@@ -845,18 +987,21 @@ def gen_imag_neg(data, skip_window, batch_size,
         batch_neg = np.vstack(batch_neg)
         yield [batch_input, batch_output, batch_neg], batch_y
 
-# words = read_file()
-# vocab, word2int, int2word = build_vocab(words)
-# int_words = words_to_ints(word2int, words)
-# word2freq = get_frequency(words, word2int, int2word)
-# char2int, int2char, char2tup, tup2char, n_consonant, n_vowel = build_charset()
-# ns_unigrams = ns_sample(word2freq, word2int, int2word, .75)
-# n_chars = 11 + 2
-# n_features = len(char2int)
-# batch_size = 120
-# embed_size = 128
-# skip_window = 5
 
+words = read_file()
+vocab, word2int, int2word = build_vocab(words)
+int_words = words_to_ints(word2int, words)
+word2freq = get_frequency(words, word2int, int2word)
+char2int, int2char, char2tup, tup2char, n_consonant, n_vowel = build_charset()
+ns_unigrams = ns_sample(word2freq, word2int, int2word, .75)
+n_chars = 11 + 2
+n_features = len(char2int)
+batch_size = 120
+embed_size = 128
+skip_window = 5
+
+# ins = word2vec_single(char2tup, ['ልዮ', 'ነው', 'ማለት'], 5, n_consonant, n_vowel)
+# print(ins)
 # gen = generate_word_images_multi(words, char2tup, batch_size, n_consonant, n_vowel)
 # [x1, x2, x3], [y1, y2] = next(gen)
 # print(x1.shape, x2.shape, x3.shape, y1.shape, y2.shape)
