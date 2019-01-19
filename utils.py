@@ -15,10 +15,10 @@ class Utils:
         v2 = self.embedding[self.word2int[word2]]
         return self.cosine_sim(v1, v2)
 
-    def sorted_sim(self, word1):
+    def sorted_sim(self, word1, top=10):
         v = self.embedding[self.word2int[word1]]
         sims = self.similarity(self.embedding, v)
-        return self.sort_by_similarity(self.word2int, sims)
+        return self.sort_by_similarity(self.word2int, sims, top=top)
 
     def solve(self, word1, word2, word3):
         v1 = self.embedding[self.word2int[word1]]
