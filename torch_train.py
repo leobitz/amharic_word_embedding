@@ -75,8 +75,8 @@ int_words = np.array(int_words, dtype=np.int32)
 n_chars = 11 + 2
 n_epoch = 5
 skip_window = 5
-batch_size = 10
-init_lr = .1
+batch_size = 1
+init_lr = .025
 gen = generateSG(list(int_words), skip_window, batch_size,
                  int2word, char2tup, n_chars, n_consonant, n_vowel)
 

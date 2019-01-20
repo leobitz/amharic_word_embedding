@@ -56,16 +56,16 @@ class Net(nn.Module):
 
 
     def vI_out(self, x_lookup, word_image, batch_size):
-        # x = self.layer1(word_image)
-        # x = x.view(batch_size, -1)
-        # x = self.layer2(x)
+        x = self.layer1(word_image)
+        x = x.view(batch_size, -1)
+        x = self.layer2(x)
         # y = self.layer3(x)
         y =  self.WI(x_lookup)
-        # T = self.T(y)
-        # T = F.sigmoid(self.TX)
-        # C = 1 - T
-        # z = y * T + x * C
-        return [y]
+        # T = self.T(x)
+        T = F.sigmoid(self.TX)
+        C = 1 - T
+        z = y * T + x * C
+        return [z, y, x, T]
 
     def forward(self, word_image, x, y):
         word_image, x_lookup, y_lookup, neg_lookup = self.prepare_inputs(
