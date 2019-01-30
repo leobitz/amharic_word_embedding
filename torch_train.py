@@ -60,9 +60,9 @@ def generateSG(data, skip_window, batch_size,
         yield batch_input, batch_vec_input, batch_output
 
 
-words = read_file('data/news_mini.txt')  # [:200_000]
+words = read_file('data/news.txt')#[:100_000]
 # open('data/news_mini.txt', mode='w', encoding='utf-8').write(" ".join(words))
-words, word2freq = min_count_threshold(words)
+# words, word2freq = min_count_threshold(words)
 # words = subsampling(words, 1e-3)
 vocab, word2int, int2word = build_vocab(words)
 char2int, int2char, char2tup, tup2char, n_consonant, n_vowel = build_charset()
@@ -106,7 +106,7 @@ for i in range(steps_per_epoch * n_epoch):
     for param_group in sgd.param_groups:
         param_group['lr'] = lr
     losses.append(out.detach().cpu().numpy())
-    if i % (steps_per_epoch//10) == 0:
+    if i % 50 == 0:
         # print(seq_prob, vI_prop)
         s = "Loss {0:.4f} lr: {1:.4f} Time Left: {2:.2f}"
         span = (time.time() - start_time)
