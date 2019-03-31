@@ -21,7 +21,7 @@ class GensimWrapper:
 
     def _create_model(self, min_count=5):
         self.model = gensim.models.Word2Vec(
-            self.data, size=self.embed_size, iter=self.iter, min_count=min_count)
+            self.data, size=self.embed_size, iter=self.iter, min_count=min_count, workers=20)
 
     def evaluate_anomaly(self):
         lines = open('data/anomaly.txt', encoding='utf-8').readlines()
@@ -35,7 +35,7 @@ class GensimWrapper:
         return correct * 100 / len(lines)
 
     def evaluate(self):
-        anomaly = self.evaluate_anomaly()
+        # anomaly = self.evaluate_anomaly()
         result = self.model.wv.accuracy(self.test_file, restrict_vocab=len(
             self.model.wv.vocab), case_insensitive=False)
         actual_result = {}
@@ -45,7 +45,7 @@ class GensimWrapper:
             incorrect = len(result[i]['incorrect'])
             total = correct + incorrect
             actual_result[section] = correct * 100.0 / total
-        actual_result['pick-one-out'] = anomaly
+        # actual_result['pick-one-out'] = anomaly
         return actual_result
 
     def set_embeddings(self, word2int, embeddings):
@@ -55,7 +55,7 @@ class GensimWrapper:
             word2int - dictionary that maps words to int index
             embedding - a new learned embeddings by tensorflow
         """
-        self.model.wv.init_sims()
+        self.model.wv.init_sims(replace=True)
         for gindex in range(len(self.model.wv.index2word)):
             gword = self.model.wv.index2word[gindex]
             index = word2int[gword]

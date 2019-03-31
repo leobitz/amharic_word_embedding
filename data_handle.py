@@ -3,6 +3,9 @@ from collections import Counter
 import numpy as np
 import random
 from gensim_wrapper import *
+from gensim.models.wrappers import FastText
+from gensim.models import Word2Vec
+
 
 
 def read_file(filename='data/news.txt'):
@@ -1019,6 +1022,47 @@ def evaluate(word2int, embeddings, corpus='data/news.txt', analogy='data/newan2.
     result = gensimw.evaluate()
     return result
 
+def evaluate3(model_file, analogy='data/newan2.txt'):
+    model = gensim.models.KeyedVectors.load_word2vec_format(model_file)
+    # model.wv.
+    model.wv.init_sims(replace=True)
+    # for gindex in range(len(model.wv.index2word)):
+    #     gword = model.wv.index2word[gindex]
+    #     index = word2int[gword]
+    #     embedding = embeddings[index]
+    #     # print(gindex, gword, type(self.model.wv.vectors_norm))
+    #     model.wv.vectors_norm[gindex] = embedding
+        # self.model.wv.vectors[gindex] = embedding
+    result = model.accuracy(analogy, restrict_vocab=len(model.wv.index2word), case_insensitive=False)
+    actual_result = {}
+    for i in range(len(result)):
+        section = result[i]['section']
+        correct = len(result[i]['correct'])
+        incorrect = len(result[i]['incorrect'])
+        total = correct + incorrect
+        actual_result[section] = correct * 100.0 / total
+    return actual_result
+
+def evaluate2(model_file, embeddings, word2int, analogy='data/newan2.txt'):
+    model = FastText.load_fasttext_format(model_file)
+    model.wv.init_sims(replace=True)
+    for gindex in range(len(model.wv.index2word)):
+        gword = model.wv.index2word[gindex]
+        index = word2int[gword]
+        embedding = embeddings[index]
+        # print(gindex, gword, type(self.model.wv.vectors_norm))
+        model.wv.syn0_vocab_norm[gindex] = embedding
+        # self.model.wv.vectors[gindex] = embedding
+    result = model.accuracy(analogy, restrict_vocab=len(model.wv.index2word), case_insensitive=False)
+    actual_result = {}
+    for i in range(len(result)):
+        section = result[i]['section']
+        correct = len(result[i]['correct'])
+        incorrect = len(result[i]['incorrect'])
+        total = correct + incorrect
+        actual_result[section] = correct * 100.0 / total
+    return actual_result
+
 
 def load_to_gensim(word2int, embeddings, corpus='data/news.txt', embed_size=100):
     gensimw = GensimWrapper(file=corpus, test_file=None,
@@ -1113,17 +1157,17 @@ def gen_imag_neg(data, skip_window, batch_size,
         batch_neg = np.vstack(batch_neg)
         yield [batch_input, batch_output, batch_neg], batch_y
 
-words = read_file()
-vocab, word2int, int2word = build_vocab(words)
-int_words = words_to_ints(word2int, words)
-word2freq = get_frequency(words, word2int, int2word)
-char2int, int2char, char2tup, tup2char, n_consonant, n_vowel = build_charset()
-ns_unigrams = ns_sample(word2freq, word2int, int2word, .75)
-n_chars = 11 + 2
-n_features = len(char2int)
-batch_size = 120
-embed_size = 128
-skip_window = 5
+# words = read_file()
+# vocab, word2int, int2word = build_vocab(words)
+# int_words = words_to_ints(word2int, words)
+# word2freq = get_frequency(words, word2int, int2word)
+# char2int, int2char, char2tup, tup2char, n_consonant, n_vowel = build_charset()
+# ns_unigrams = ns_sample(word2freq, word2int, int2word, .75)
+# n_chars = 11 + 2
+# n_features = len(char2int)
+# batch_size = 120
+# embed_size = 128
+# skip_window = 5
 
 # ins = word2vec_single(char2tup, ['ልዮ', 'ነው', 'ማለት'], 5, n_consonant, n_vowel)
 # print(ins)
