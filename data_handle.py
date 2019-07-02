@@ -68,23 +68,23 @@ def ns_sample(word2freq, word2int, int2word, rate):
 def min_count_threshold(words, min_count=5):
     new_words = []
     word2freq = {}
-    unkown_word = "*###*"
-    new_words.append(unkown_word)
+    # unkown_word = "*###*"
+    # new_words.append(unkown_word)
     for word in words:
         if word not in word2freq:
             word2freq[word] = 0
         word2freq[word] += 1
 
     freq = {}
-    freq[unkown_word] = 0
+    # freq[unkown_word] = 0
     for word in words:
         if word2freq[word] >= min_count:
             new_words.append(word)
             if word not in freq:
                 freq[word] = 0
             freq[word] += 1
-        else:
-            freq[unkown_word] += 1
+        # else:
+        #     freq[unkown_word] += 1
 
     return new_words, freq
 
@@ -144,6 +144,24 @@ def word2vec_seperated(char2tup, word, max_word_len, n_consonant, n_vowel):
     con, vow = char2tup[' ']
     cons[i + 1:, con] = 1
     vowel[i + 1:, vow] = 1
+    return cons, vowel
+
+def word2vec_indexed(char2tup, word, max_word_len, n_consonant, n_vowel):
+    """
+    using char2int mapping, it creates stack of one-hot vectors characters for a word
+    the mapping is seperated for vowel and consonant
+    [0 0 0 1 0 0: 0 1 0 0]
+    Consonan        Vowel
+    """
+    con, vow = char2tup[' ']
+    cons = np.zeros((max_word_len,), dtype=np.int32) + con
+    vowel = np.zeros((max_word_len,), dtype=np.int32) + vow
+    for i in range(len(word)):
+        char = word[i]
+        t = char2tup[char]
+        cons[i] = t[0]
+        vowel[i] = t[1]
+    
     return cons, vowel
 
 def char_to_vec(char, char2tup, n_consonant, n_vowel):
@@ -210,9 +228,22 @@ def word2vec(char2int, word, max_word_len):
     for i in range(len(word)):
         char = word[i]
         t = char2int[char]
-        vec[i][t] = 1
+        vec[i, t] = 1
     spacei = char2int[' ']
     vec[i + 1:, spacei] = 1
+    return vec
+
+def word2vec_sparse(char2int, word, max_word_len):
+    """
+    using char2int mapping, it creates stack of one-hot vectors characters for a word
+    [0 0 0 1 0 0 0 0 0 0]
+    """
+    max_n_char = len(char2int)
+    # vec = np.zeros((max_word_len, max_n_char), dtype=np.float32)
+    vec = [char2int[c] for c in word]
+    to_pad = max_word_len - len(word)
+    pad = [char2int[' '] ] * to_pad
+    vec = vec + pad
     return vec
 
 
@@ -1113,20 +1144,67 @@ def gen_imag_neg(data, skip_window, batch_size,
         batch_neg = np.vstack(batch_neg)
         yield [batch_input, batch_output, batch_neg], batch_y
 
-words = read_file()
-vocab, word2int, int2word = build_vocab(words)
-int_words = words_to_ints(word2int, words)
-word2freq = get_frequency(words, word2int, int2word)
-char2int, int2char, char2tup, tup2char, n_consonant, n_vowel = build_charset()
-ns_unigrams = ns_sample(word2freq, word2int, int2word, .75)
-n_chars = 11 + 2
-n_features = len(char2int)
-batch_size = 120
-embed_size = 128
-skip_window = 5
+# words = read_file()
+# vocab, word2int, int2word = build_vocab(words)
+# int_words = words_to_ints(word2int, words)
+# word2freq = get_frequency(words, word2int, int2word)
+# char2int, int2char, char2tup, tup2char, n_consonant, n_vowel = build_charset()
+# ns_unigrams = ns_sample(word2freq, word2int, int2word, .75)
+# n_chars = 11 + 2
+# n_features = len(char2int)
+# batch_size = 120
+# embed_size = 128
+# skip_window = 5
 
 # ins = word2vec_single(char2tup, ['ልዮ', 'ነው', 'ማለት'], 5, n_consonant, n_vowel)
 # print(ins)
 # gen = generate_word_images_multi(words, char2tup, batch_size, n_consonant, n_vowel)
 # [x1, x2, x3], [y1, y2] = next(gen)
 # print(x1.shape, x2.shape, x3.shape, y1.shape, y2.shape)
+
+# words = read_file(filename='data/news.txt')
+# # unkown_word = "<unk>"
+# # words = [unkown_word] + words
+# xvocab, xword2int, xint2word = build_vocab(words)
+
+# words, word2freq = min_count_threshold(words)
+# vocab, word2int, int2word = build_vocab(words)
+# print(len(vocab))
+# # word2freq = get_frequency(words, word2int, int2word)
+# unigrams = [word2freq[int2word[i]] for i in range(len(word2int))]
+
+# char2int, int2char, char2tup, tup2char, n_consonant, n_vowel = build_charset()
+# ns_unigrams = ns_sample(word2freq, word2int, int2word, .75)
+# n_chars = 11 + 2 
+# n_features = len(char2int)
+# batch_size = 120
+# embed_size = 100
+# skip_window = 5
+
+# def parseVec(file, delimiter):
+#     lines = open(file, encoding='utf8').readlines()
+#     vocab_size, embed_size = [int(s) for s in lines[0].split()]
+#     embeddings = np.zeros((vocab_size, embed_size), dtype=np.float64)
+#     print(embeddings.shape)
+#     wordint = {}
+#     for i in range(1, vocab_size+1):
+#         try:
+#             line = lines[i][:-1].split(delimiter)
+#             word = line[0]
+# #             if word in word2int:
+#             wordvec = np.array([np.float64(j) for j in line[1:] if j != ''])
+#             embeddings[len(wordint)] = wordvec
+#             wordint[word] = len(wordint)
+#         except Exception as e:
+#             print(lines[i])
+#             print(e)
+#     print(len(wordint))
+#     return embeddings, wordint
+
+# seq_emb = parseVec('D:/Library/Projects/sem_w2v/data/vec.txt.vec', ' ')
+
+# emb = seq_emb[0]
+# wordint = seq_emb[1]
+# print(len(wordint))
+# print(evaluate(wordint, normalize(emb), embed_size=emb.shape[1]))
+# print(evaluate(wordint, emb, embed_size=emb.shape[1]))

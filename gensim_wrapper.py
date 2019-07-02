@@ -35,17 +35,19 @@ class GensimWrapper:
         return correct * 100 / len(lines)
 
     def evaluate(self):
-        anomaly = self.evaluate_anomaly()
+        # anomaly = self.evaluate_anomaly()
         result = self.model.wv.accuracy(self.test_file, restrict_vocab=len(
             self.model.wv.vocab), case_insensitive=False)
         actual_result = {}
+        # print(result)
         for i in range(len(result)):
             section = result[i]['section']
             correct = len(result[i]['correct'])
+            # print(correct)
             incorrect = len(result[i]['incorrect'])
             total = correct + incorrect
             actual_result[section] = correct * 100.0 / total
-        actual_result['pick-one-out'] = anomaly
+        # actual_result['pick-one-out'] = anomaly
         return actual_result
 
     def set_embeddings(self, word2int, embeddings):
@@ -57,9 +59,12 @@ class GensimWrapper:
         """
         self.model.wv.init_sims()
         for gindex in range(len(self.model.wv.index2word)):
-            gword = self.model.wv.index2word[gindex]
-            index = word2int[gword]
-            embedding = embeddings[index]
-            # print(gindex, gword, type(self.model.wv.vectors_norm))
-            self.model.wv.vectors_norm[gindex] = embedding
-            # self.model.wv.vectors[gindex] = embedding
+            try:
+                gword = self.model.wv.index2word[gindex]
+                index = word2int[gword]
+                embedding = embeddings[index]
+                # print(gindex, gword, type(self.model.wv.vectors_norm))
+                self.model.wv.vectors_norm[gindex] = embedding
+                # self.model.wv.vectors[gindex] = embedding
+            except:
+                pass
