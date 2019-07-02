@@ -3,6 +3,9 @@ from collections import Counter
 import numpy as np
 import random
 from gensim_wrapper import *
+from gensim.models.wrappers import FastText
+from gensim.models import Word2Vec
+
 
 
 def read_file(filename='data/news.txt'):
@@ -1049,6 +1052,47 @@ def evaluate(word2int, embeddings, corpus='data/news.txt', analogy='data/newan2.
     gensimw.set_embeddings(word2int, embeddings)
     result = gensimw.evaluate()
     return result
+
+def evaluate3(model_file, analogy='data/newan2.txt'):
+    model = gensim.models.KeyedVectors.load_word2vec_format(model_file)
+    # model.wv.
+    model.wv.init_sims(replace=True)
+    # for gindex in range(len(model.wv.index2word)):
+    #     gword = model.wv.index2word[gindex]
+    #     index = word2int[gword]
+    #     embedding = embeddings[index]
+    #     # print(gindex, gword, type(self.model.wv.vectors_norm))
+    #     model.wv.vectors_norm[gindex] = embedding
+        # self.model.wv.vectors[gindex] = embedding
+    result = model.accuracy(analogy, restrict_vocab=len(model.wv.index2word), case_insensitive=False)
+    actual_result = {}
+    for i in range(len(result)):
+        section = result[i]['section']
+        correct = len(result[i]['correct'])
+        incorrect = len(result[i]['incorrect'])
+        total = correct + incorrect
+        actual_result[section] = correct * 100.0 / total
+    return actual_result
+
+def evaluate2(model_file, embeddings, word2int, analogy='data/newan2.txt'):
+    model = FastText.load_fasttext_format(model_file)
+    model.wv.init_sims(replace=True)
+    for gindex in range(len(model.wv.index2word)):
+        gword = model.wv.index2word[gindex]
+        index = word2int[gword]
+        embedding = embeddings[index]
+        # print(gindex, gword, type(self.model.wv.vectors_norm))
+        model.wv.syn0_vocab_norm[gindex] = embedding
+        # self.model.wv.vectors[gindex] = embedding
+    result = model.accuracy(analogy, restrict_vocab=len(model.wv.index2word), case_insensitive=False)
+    actual_result = {}
+    for i in range(len(result)):
+        section = result[i]['section']
+        correct = len(result[i]['correct'])
+        incorrect = len(result[i]['incorrect'])
+        total = correct + incorrect
+        actual_result[section] = correct * 100.0 / total
+    return actual_result
 
 
 def load_to_gensim(word2int, embeddings, corpus='data/news.txt', embed_size=100):

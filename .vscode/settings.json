@@ -1,4 +1,4 @@
 {
-    "python.pythonPath": "C:\\Users\\amany\\Anaconda2\\envs\\tf2\\python.exe",
-    "python.formatting.provider": "black"
+  "python.pythonPath": "C:\\Users\\amany\\Anaconda2\\envs\\tf2\\python.exe",
+  "python.formatting.provider": "black"
 }
