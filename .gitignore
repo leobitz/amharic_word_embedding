@@ -1,6 +1,7 @@
 .ipynb_checkpoints/
 */.ipynb_checkpoints/*
 __pycache__/*
+.vscode/
 log/
 logs/
 results/
@@ -9,5 +10,5 @@ model_weights/
 *.db
 *.sqlite
 models/*
-data/*
+data/*.txt
 model_weights/*
